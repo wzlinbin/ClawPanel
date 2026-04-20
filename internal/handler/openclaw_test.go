@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -189,18 +190,27 @@ func TestDetectBundledExtensionsDirFromResolvedPackageRoot(t *testing.T) {
 	if err := os.WriteFile(entryPath, []byte("#!/usr/bin/env node\nconsole.log('ok')\n"), 0o755); err != nil {
 		t.Fatalf("write entry: %v", err)
 	}
-	linkPath := filepath.Join(binDir, "openclaw")
+	linkName := "openclaw"
+	if runtime.GOOS == "windows" {
+		linkName = "openclaw.cmd"
+	}
+	linkPath := filepath.Join(binDir, linkName)
 	if err := os.Symlink(entryPath, linkPath); err != nil {
 		t.Fatalf("create symlink: %v", err)
 	}
 
 	t.Setenv("PATH", binDir)
 
-	if got := detectOpenClawPackageRoot(); got != pkgDir {
-		t.Fatalf("detectOpenClawPackageRoot() = %q, want %q", got, pkgDir)
+	wantRoot, err := filepath.EvalSymlinks(pkgDir)
+	if err != nil || strings.TrimSpace(wantRoot) == "" {
+		wantRoot = pkgDir
 	}
-	if got := detectBundledExtensionsDir(); got != filepath.Join(pkgDir, "dist", "extensions") {
-		t.Fatalf("detectBundledExtensionsDir() = %q, want %q", got, filepath.Join(pkgDir, "dist", "extensions"))
+	if got := detectOpenClawPackageRoot(); got != wantRoot {
+		t.Fatalf("detectOpenClawPackageRoot() = %q, want %q", got, wantRoot)
+	}
+	wantExt := filepath.Join(wantRoot, "dist", "extensions")
+	if got := detectBundledExtensionsDir(); got != wantExt {
+		t.Fatalf("detectBundledExtensionsDir() = %q, want %q", got, wantExt)
 	}
 }
 
