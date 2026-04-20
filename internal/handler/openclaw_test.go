@@ -170,6 +170,40 @@ func TestGetOpenClawConfigBackfillsAgentDefaultsModelFromLegacyField(t *testing.
 	}
 }
 
+func TestDetectBundledExtensionsDirFromResolvedPackageRoot(t *testing.T) {
+	root := t.TempDir()
+	pkgDir := filepath.Join(root, "openclaw")
+	distDir := filepath.Join(pkgDir, "dist")
+	extDir := filepath.Join(distDir, "extensions", "voice-call")
+	binDir := filepath.Join(root, "bin")
+	if err := os.MkdirAll(extDir, 0o755); err != nil {
+		t.Fatalf("mkdir extensions dir: %v", err)
+	}
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("mkdir bin dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "package.json"), []byte(`{"name":"openclaw"}`), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+	entryPath := filepath.Join(distDir, "index.js")
+	if err := os.WriteFile(entryPath, []byte("#!/usr/bin/env node\nconsole.log('ok')\n"), 0o755); err != nil {
+		t.Fatalf("write entry: %v", err)
+	}
+	linkPath := filepath.Join(binDir, "openclaw")
+	if err := os.Symlink(entryPath, linkPath); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	t.Setenv("PATH", binDir)
+
+	if got := detectOpenClawPackageRoot(); got != pkgDir {
+		t.Fatalf("detectOpenClawPackageRoot() = %q, want %q", got, pkgDir)
+	}
+	if got := detectBundledExtensionsDir(); got != filepath.Join(pkgDir, "dist", "extensions") {
+		t.Fatalf("detectBundledExtensionsDir() = %q, want %q", got, filepath.Join(pkgDir, "dist", "extensions"))
+	}
+}
+
 func TestSaveOpenClawConfigRejectsInvalidNumericFields(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)

@@ -307,18 +307,54 @@ func injectWecomVirtualChannel(cfg *config.Config, ocConfig map[string]interface
 }
 
 func detectOpenClawPackageRoot() string {
-	bin, err := exec.LookPath("openclaw")
-	if err != nil {
-		return ""
+	candidates := []string{}
+	if bin, err := exec.LookPath("openclaw"); err == nil && strings.TrimSpace(bin) != "" {
+		candidates = append(candidates, bin)
 	}
-	resolved, err := filepath.EvalSymlinks(bin)
-	if err != nil {
-		resolved = bin
+	if bin := config.DetectOpenClawBinaryPath(); bin != "" {
+		candidates = append(candidates, bin)
 	}
-	if strings.HasSuffix(resolved, ".mjs") || strings.HasSuffix(resolved, ".js") {
-		return filepath.Dir(resolved)
+
+	for _, raw := range candidates {
+		resolved, err := filepath.EvalSymlinks(raw)
+		if err != nil {
+			resolved = raw
+		}
+		for _, candidate := range []string{
+			resolved,
+			filepath.Dir(resolved),
+			filepath.Dir(filepath.Dir(resolved)),
+			filepath.Dir(filepath.Dir(filepath.Dir(resolved))),
+		} {
+			candidate = strings.TrimSpace(candidate)
+			if candidate == "" {
+				continue
+			}
+			info, err := os.Stat(candidate)
+			if err != nil {
+				continue
+			}
+			if !info.IsDir() {
+				candidate = filepath.Dir(candidate)
+			}
+			if _, err := os.Stat(filepath.Join(candidate, "package.json")); err == nil {
+				return candidate
+			}
+			if _, err := os.Stat(filepath.Join(candidate, "openclaw.mjs")); err == nil {
+				return candidate
+			}
+			if base := filepath.Base(candidate); base == "dist" || base == "bin" {
+				parent := filepath.Dir(candidate)
+				if _, err := os.Stat(filepath.Join(parent, "package.json")); err == nil {
+					return parent
+				}
+				if _, err := os.Stat(filepath.Join(parent, "openclaw.mjs")); err == nil {
+					return parent
+				}
+			}
+		}
 	}
-	return filepath.Dir(resolved)
+	return ""
 }
 
 func detectBundledExtensionsDir() string {
@@ -2303,6 +2339,7 @@ func SwitchFeishuVariant(cfg *config.Config, procMgr *process.Manager, sysLog ..
 		c.JSON(http.StatusOK, resp)
 	}
 }
+
 // resolveQQBotPluginID 根据当前插件配置，返回实际启用的 qqbot 插件 ID
 func resolveQQBotPluginID(entries map[string]interface{}) string {
 	for _, id := range qqBotAllPluginIDs {
