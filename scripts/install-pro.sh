@@ -1,9 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE:-http://43.248.142.249:19527}"
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE%/}"
-ACCEL_RAW_BASE="${ACCEL_RAW_BASE:-${CLAWPANEL_PUBLIC_BASE}}"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main"
 TMP_SCRIPT=$(mktemp)
 trap 'rm -f "$TMP_SCRIPT"' EXIT
@@ -19,14 +16,12 @@ fetch_script() {
   fi
 }
 
-if fetch_script "${ACCEL_RAW_BASE}/scripts/install.sh"; then
-  : # ok
-elif fetch_script "${GITHUB_RAW_BASE}/scripts/install.sh"; then
+if fetch_script "${GITHUB_RAW_BASE}/scripts/install.sh"; then
   : # fallback ok
 else
-  echo "缺少 curl/wget 或网络不通，无法下载 Pro 安装脚本" >&2
+  echo "缺少 curl/wget 或网络不通，无法从 GitHub 下载安装脚本" >&2
   exit 1
 fi
 
 chmod +x "$TMP_SCRIPT"
-UPDATE_META=update-pro.json bash "$TMP_SCRIPT" "$@"
+bash "$TMP_SCRIPT" "$@"

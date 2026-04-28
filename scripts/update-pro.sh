@@ -1,24 +1,20 @@
 #!/bin/bash
 # ============================================================
 # ClawPanel Pro 手动更新脚本
-# 适用于面板内自动更新失败（如旧加速服务器失效）的用户
+# 适用于面板内自动更新失败的用户
 # 用法:
-#   curl -fsSL http://43.248.142.249:19527/scripts/update-pro.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/update-pro.sh | sudo bash
 # 或:
-#   wget -qO- http://43.248.142.249:19527/scripts/update-pro.sh | sudo bash
+#   wget -qO- https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/update-pro.sh | sudo bash
 # ============================================================
 
 set -e
 
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE:-http://43.248.142.249:19527}"
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE%/}"
 INSTALL_DIR="/opt/clawpanel"
 SERVICE_NAME="clawpanel"
 BINARY_NAME="clawpanel"
 REPO="zhaoxinyi02/ClawPanel"
 TAG_PREFIX="pro-v"
-ACCEL_BASE="${ACCEL_BASE:-${CLAWPANEL_PUBLIC_BASE}/api/panel/update-mirror}"
-ACCEL_META_URL="${ACCEL_META_URL:-${ACCEL_BASE}/pro}"
 GITHUB_RELEASES_API="https://api.github.com/repos/${REPO}/releases?per_page=20"
 
 RED='\033[31m'
@@ -56,11 +52,9 @@ download_file() {
 }
 
 get_latest_version() {
-  local ver
-  ver=$(fetch_text "$ACCEL_META_URL" 2>/dev/null | awk -F'"' '/"latest_version"/{print $4;exit}')
-  [ -n "$ver" ] && { echo "$ver"; return; }
   local tag
   tag=$(fetch_text "$GITHUB_RELEASES_API" 2>/dev/null | awk -v p="$TAG_PREFIX" -F'"' '$2=="tag_name"&&index($4,p)==1{print $4;exit}')
+  local ver
   ver="${tag#${TAG_PREFIX}}"
   [[ "$ver" =~ ^[0-9] ]] && echo "$ver"
 }
@@ -113,7 +107,6 @@ if [ "$CURRENT_VERSION" = "$TARGET_VERSION" ]; then
 fi
 
 BINARY_FILE="${BINARY_NAME}-v${TARGET_VERSION}-${SYS_OS}-${SYS_ARCH}"
-ACCEL_URL="${ACCEL_BASE}/pro/files/${BINARY_FILE}"
 GITHUB_URL="https://github.com/${REPO}/releases/download/${TAG_PREFIX}${TARGET_VERSION}/${BINARY_FILE}"
 
 TMP_DIR=$(mktemp -d)
@@ -121,14 +114,12 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 echo ""
 log "下载 ClawPanel Pro v${TARGET_VERSION} ..."
-info "优先使用加速服务器，失败自动切换 GitHub..."
+info "下载地址: ${GITHUB_URL}"
 
-if download_file "$ACCEL_URL" "$TMP_DIR/${BINARY_FILE}"; then
-  DOWNLOAD_FROM="加速服务器"
-elif download_file "$GITHUB_URL" "$TMP_DIR/${BINARY_FILE}"; then
+if download_file "$GITHUB_URL" "$TMP_DIR/${BINARY_FILE}"; then
   DOWNLOAD_FROM="GitHub"
 else
-  err "加速服务器和 GitHub 均下载失败，请检查网络后重试。"
+  err "GitHub 下载失败，请检查网络后重试，或从 Releases 手动下载对应二进制。"
 fi
 log "下载完成 (来源: ${DOWNLOAD_FROM})"
 

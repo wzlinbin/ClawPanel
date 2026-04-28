@@ -28,24 +28,6 @@ import (
 func GetVersion(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		currentVersion := resolveOpenClawCurrentVersion(cfg)
-		if cfg.IsLiteEdition() {
-			if currentVersion == "unknown" || currentVersion == "" {
-				currentVersion = detectOpenClawVersion(cfg)
-			}
-			if currentVersion == "unknown" || currentVersion == "" {
-				currentVersion = pinnedOpenClawVersion
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"ok":              true,
-				"currentVersion":  currentVersion,
-				"latestVersion":   currentVersion,
-				"lastCheckedAt":   "",
-				"updateAvailable": false,
-				"edition":         "lite",
-				"bundled":         true,
-			})
-			return
-		}
 
 		var updateInfo map[string]interface{}
 		updateCheckPath := filepath.Join(cfg.OpenClawDir, "update-check.json")
@@ -633,7 +615,7 @@ func UpdateStatus(cfg *config.Config) gin.HandlerFunc {
 	}
 }
 
-// CheckPanelUpdate 检查 ClawPanel 面板自身更新（国内加速服务器）
+// CheckPanelUpdate 检查 ClawPanel 面板自身更新
 func CheckPanelUpdate(updater *update.Updater) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		info, hasUpdate, err := updater.CheckUpdate()
@@ -773,13 +755,7 @@ func ProxyUpdater(cfg *config.Config) gin.HandlerFunc {
 func panelMirrorSpec(edition string) (updatemirror.EditionSpec, error) {
 	edition = strings.ToLower(strings.TrimSpace(edition))
 	switch edition {
-	case "lite":
-		return updatemirror.EditionSpec{
-			Edition:           "lite",
-			GitHubReleasesAPI: "https://api.github.com/repos/zhaoxinyi02/ClawPanel/releases?per_page=20",
-			GitHubTagPrefix:   "lite-v",
-		}, nil
-	case "pro":
+	case "", "pro":
 		return updatemirror.EditionSpec{
 			Edition:           "pro",
 			GitHubReleasesAPI: "https://api.github.com/repos/zhaoxinyi02/ClawPanel/releases?per_page=20",

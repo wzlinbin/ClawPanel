@@ -9,8 +9,7 @@
 Go Single Binary · React 18 · TailwindCSS · SQLite · WebSocket Real-time · Cross-platform
 
 [![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-red?style=flat-square)](LICENSE)
-[![Pro](https://img.shields.io/badge/Pro-5.5.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
-[![Lite](https://img.shields.io/badge/Lite-0.3.5-2563eb?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
+[![Release](https://img.shields.io/badge/Release-5.5.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
 [![Go](https://img.shields.io/badge/go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/react-18-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev)
 [![CI](https://github.com/zhaoxinyi02/ClawPanel/actions/workflows/ci.yml/badge.svg)](https://github.com/zhaoxinyi02/ClawPanel/actions/workflows/ci.yml)
@@ -29,7 +28,10 @@ Go Single Binary · React 18 · TailwindCSS · SQLite · WebSocket Real-time · 
 > This project is for **learning and research purposes only**. **Commercial use is strictly prohibited.** Using third-party clients to log in to QQ/WeChat may violate Tencent's Terms of Service and **carries a risk of account suspension**. Please use test accounts. The author has **not performed any reverse engineering** and only integrates existing open-source projects. **No responsibility is assumed for any consequences.** By downloading and using this project, you agree to the [full disclaimer](DISCLAIMER.md).
 
 > [!NOTE]
-> **v5.5.0 / v0.3.5 Update** — this release improves Hermes platform management and panel settings UX, makes Lite upgrades preserve external data safely, and fixes panel-chat / OpenClaw runtime compatibility issues. See [changelogs/v5.5.0.md](changelogs/v5.5.0.md) and [changelogs/lite-v0.3.5.md](changelogs/lite-v0.3.5.md)
+> **v5.5.0 Update** — this release improves Hermes platform management and panel settings UX, and fixes panel-chat / OpenClaw runtime compatibility issues. See [changelogs/v5.5.0.md](changelogs/v5.5.0.md)
+
+> [!IMPORTANT]
+> **The Lite edition has been discontinued.** ClawPanel now ships only the standard edition. It no longer bundles OpenClaw runtime and no longer provides Lite build, install, update, or packaging scripts. Historical Lite releases and changelogs remain available for reference.
 
 > [!NOTE]
 > **v5.0.4 New** — 🔧 NapCat one-click diagnose & repair, system diagnostic report, QR login auto-detect & auto-close, disabled auto-login, container auto-restart after install, PATH detection fix. [View changelog](changelogs/v5.0.4.md)
@@ -94,7 +96,7 @@ Unified configuration for **20+ channels** with one-click enable/disable:
 Built-in AI chat assistant floating panel, supports multi-provider/multi-model switching, automatically uses OpenClaw's configured API.
 
 ### Panel Self-Update
-- China acceleration server for stable downloads
+- Uses GitHub Releases for update checks and downloads
 - Auto: check → download → SHA256 verify → replace → restart
 - **Isolated updater process**: runs via `systemd-run --scope`, survives main process stop
 - Auto-backup old binary (`.bak`), SHA256 integrity check
@@ -134,7 +136,7 @@ Built-in AI chat assistant floating panel, supports multi-provider/multi-model s
 
 | Layer | Technology |
 |:---|:---|
-| Backend | Go 1.22+ · Gin · SQLite (modernc.org/sqlite) · gorilla/websocket · golang-jwt |
+| Backend | Go 1.24+ · Gin · SQLite (modernc.org/sqlite) · gorilla/websocket · golang-jwt |
 | Frontend | React 18 · TypeScript · TailwindCSS · Lucide Icons · Vite |
 | Deployment | Single binary · `go:embed` embedded frontend · Cross-platform static build (`CGO_ENABLED=0`) |
 | AI Engine | [OpenClaw](https://openclaw.ai) — supports GPT-4o / Claude / Gemini / DeepSeek etc. |
@@ -148,8 +150,8 @@ Built-in AI chat assistant floating panel, supports multi-provider/multi-model s
 **Linux / macOS**
 
 ```bash
-export CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-curl -fsSL "$CLAWPANEL_PUBLIC_BASE/scripts/install.sh" -o install.sh && sudo CLAWPANEL_PUBLIC_BASE="$CLAWPANEL_PUBLIC_BASE" bash install.sh
+curl -fsSL https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.sh -o install.sh
+sudo bash install.sh
 ```
 
 Auto-completes: download binary → install to `/opt/clawpanel` → register system service → auto-start → configure firewall → start.
@@ -157,8 +159,7 @@ Auto-completes: download binary → install to `/opt/clawpanel` → register sys
 **Windows (PowerShell as Admin)**
 
 ```powershell
-$env:CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-irm "$env:CLAWPANEL_PUBLIC_BASE/scripts/install.ps1" | iex
+irm https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.ps1 | iex
 ```
 
 Or download `ClawPanel-Setup.exe` from [Releases](https://github.com/zhaoxinyi02/ClawPanel/releases) and run as administrator.
@@ -169,13 +170,13 @@ Download the binary for your platform from [Releases](https://github.com/zhaoxin
 
 ```bash
 # Linux
-chmod +x clawpanel-linux-amd64 && ./clawpanel-linux-amd64
+chmod +x clawpanel-v<version>-linux-amd64 && ./clawpanel-v<version>-linux-amd64
 
 # macOS
-chmod +x clawpanel-darwin-arm64 && ./clawpanel-darwin-arm64
+chmod +x clawpanel-v<version>-darwin-arm64 && ./clawpanel-v<version>-darwin-arm64
 
 # Windows (double-click or command line)
-clawpanel-windows-amd64.exe
+clawpanel-v<version>-windows-amd64.exe
 ```
 
 Visit `http://localhost:19527` after startup. Default password: `clawpanel`.
@@ -195,7 +196,7 @@ make installer    # Build Windows exe installer
 ```
 
 > [!TIP]
-> Requires Go 1.22+ and Node.js 18+. For users in China:
+> Requires Go 1.24+ and Node.js 22+. Optional mirror settings:
 > ```bash
 > export GOPROXY=https://goproxy.cn,direct
 > npm config set registry https://registry.npmmirror.com
@@ -234,7 +235,7 @@ The repository now includes two workflows for testing and release packaging:
     - `frontend-dist`
     - `clawpanel-linux-amd64-ci` for quick validation
 - `Release Build` (`.github/workflows/release.yml`)
-  - Trigger: `push` tag `v*` (for example `v5.2.1`) / manual dispatch
+  - Trigger: `push` tag `pro-v*` (for example `pro-v5.5.0`) / manual dispatch
   - Runs: automatic multi-platform binaries (`linux/darwin/windows`) + Windows installer `ClawPanel-Setup-v{version}.exe`
   - Publish: for tag runs, assets are uploaded to GitHub Releases with `checksums.txt`
 
@@ -243,8 +244,8 @@ Additionally, `Dependabot` (`.github/dependabot.yml`) checks GitHub Actions depe
 Example:
 
 ```bash
-git tag v5.2.1
-git push origin v5.2.1
+git tag pro-v5.5.0
+git push origin pro-v5.5.0
 ```
 
 ## Environment Variables
@@ -281,11 +282,11 @@ sc query ClawPanel
 
 | Platform | Architecture | Binary |
 |:---:|:---:|:---|
-| Linux | x86_64 | `clawpanel-linux-amd64` |
-| Linux | ARM64 | `clawpanel-linux-arm64` |
-| macOS | x86_64 | `clawpanel-darwin-amd64` |
-| macOS | ARM64 (M1/M2/M3) | `clawpanel-darwin-arm64` |
-| Windows | x86_64 | `clawpanel-windows-amd64.exe` |
+| Linux | x86_64 | `clawpanel-v<version>-linux-amd64` |
+| Linux | ARM64 | `clawpanel-v<version>-linux-arm64` |
+| macOS | x86_64 | `clawpanel-v<version>-darwin-amd64` |
+| macOS | ARM64 (M1/M2/M3) | `clawpanel-v<version>-darwin-arm64` |
+| Windows | x86_64 | `clawpanel-v<version>-windows-amd64.exe` |
 
 ## Changelog
 

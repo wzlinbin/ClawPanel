@@ -3,15 +3,13 @@
 # ClawPanel 一键安装脚本 (Linux/macOS)
 # 自动获取最新 Release 版本，无需手动更新脚本
 # 用法:
-#   curl -fsSL http://43.248.142.249:19527/scripts/install.sh | sudo bash
+#   curl -fsSL https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.sh | sudo bash
 # 或:
-#   wget -qO- http://43.248.142.249:19527/scripts/install.sh | sudo bash
+#   wget -qO- https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.sh | sudo bash
 # ============================================================
 
 set -e
 
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE:-http://43.248.142.249:19527}"
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE%/}"
 INSTALL_DIR="/opt/clawpanel"
 SERVICE_NAME="clawpanel"
 BINARY_NAME="clawpanel"
@@ -19,21 +17,15 @@ REPO="zhaoxinyi02/ClawPanel"
 TAG_PREFIX="pro-v"
 GITHUB_RELEASES_API="https://api.github.com/repos/${REPO}/releases?per_page=20"
 PORT="19527"
-ACCEL_BASE="${ACCEL_BASE:-${CLAWPANEL_PUBLIC_BASE}/api/panel/update-mirror}"
-DEFAULT_VERSION="5.2.15"
-UPDATE_META_URL="${UPDATE_META_URL:-${ACCEL_BASE}/pro}"
+DEFAULT_VERSION="5.5.0"
 
 # ==================== 自动获取最新版本 ====================
 get_latest_version() {
     local ver=""
     local tag=""
     if command -v curl &>/dev/null; then
-        tag=$(curl -fsSL "${UPDATE_META_URL}" 2>/dev/null | awk -F'"' '/"latest_version"/ {print $4; exit}')
-        if [ -n "$tag" ]; then echo "${tag:-$DEFAULT_VERSION}"; return; fi
         tag=$(curl -fsSL "${GITHUB_RELEASES_API}" 2>/dev/null | awk -v prefix="$TAG_PREFIX" -F'"' '$2=="tag_name" && index($4,prefix)==1 {print $4; exit}')
     elif command -v wget &>/dev/null; then
-        tag=$(wget -qO- "${UPDATE_META_URL}" 2>/dev/null | awk -F'"' '/"latest_version"/ {print $4; exit}')
-        if [ -n "$tag" ]; then echo "${tag:-$DEFAULT_VERSION}"; return; fi
         tag=$(wget -qO- "${GITHUB_RELEASES_API}" 2>/dev/null | awk -v prefix="$TAG_PREFIX" -F'"' '$2=="tag_name" && index($4,prefix)==1 {print $4; exit}')
     fi
 
@@ -49,41 +41,6 @@ get_latest_version() {
 
 VERSION=$(get_latest_version)
 
-normalize_source() {
-  case "${1:-}" in
-    github) echo "github" ;;
-    accel) echo "accel" ;;
-    *) echo "" ;;
-  esac
-}
-
-other_source() {
-  case "$1" in
-    github) echo "accel" ;;
-    *) echo "github" ;;
-  esac
-}
-
-choose_download_source() {
-  DOWNLOAD_SOURCE=$(normalize_source "${DOWNLOAD_SOURCE:-}")
-  if [ -n "$DOWNLOAD_SOURCE" ]; then
-    return
-  fi
-  echo -e "${CYAN}[ClawPanel]${NC} 请选择下载线路："
-  echo -e "  ${BOLD}1) GitHub${NC}      中国香港及境外服务器推荐"
-  echo -e "  ${BOLD}2) 加速服务器${NC}  中国大陆服务器推荐，更稳当一些"
-  if [ -t 0 ]; then
-    read -r -p "请输入 [1/2]（默认 2）: " source_choice
-    case "$source_choice" in
-      1) DOWNLOAD_SOURCE="github" ;;
-      2|"") DOWNLOAD_SOURCE="accel" ;;
-      *) DOWNLOAD_SOURCE="accel" ;;
-    esac
-  else
-    DOWNLOAD_SOURCE="accel"
-  fi
-}
-
 download_file() {
   local url="$1"
   local dest="$2"
@@ -92,31 +49,6 @@ download_file() {
   else
     wget -T 300 --tries=2 -O "$dest" "$url"
   fi
-}
-
-download_with_selected_source() {
-  local primary="$1"
-  local binary_file="$2"
-  local dest="$3"
-  local primary_url secondary_url secondary
-  secondary=$(other_source "$primary")
-  if [ "$primary" = "github" ]; then
-    primary_url="https://github.com/${REPO}/releases/download/${TAG_PREFIX}${VERSION}/${binary_file}"
-    secondary_url="${ACCEL_BASE}/pro/files/${binary_file}"
-  else
-    primary_url="${ACCEL_BASE}/pro/files/${binary_file}"
-    secondary_url="https://github.com/${REPO}/releases/download/${TAG_PREFIX}${VERSION}/${binary_file}"
-  fi
-  if download_file "$primary_url" "$dest"; then
-    DOWNLOAD_SOURCE_ACTUAL="$primary"
-    return 0
-  fi
-  warn "${primary} 下载失败，切换到 ${secondary}..."
-  if download_file "$secondary_url" "$dest"; then
-    DOWNLOAD_SOURCE_ACTUAL="$secondary"
-    return 0
-  fi
-  return 1
 }
 
 # ==================== 颜色定义 ====================
@@ -280,8 +212,6 @@ main() {
             VERSION="${BASH_REMATCH[1]}"
             BINARY_FILE="$base_name"
         fi
-    else
-        choose_download_source
     fi
 
     # ---- Step 1: 创建目录 ----
@@ -296,12 +226,11 @@ main() {
         cp -f "$LOCAL_BINARY_PATH" "${INSTALL_DIR}/${BINARY_NAME}"
         DOWNLOAD_SOURCE_ACTUAL="local"
         info "已使用当前目录中的本地构建包进行安装。"
-    elif [ "$DOWNLOAD_SOURCE" = "github" ]; then
-        info "已选择 GitHub（中国香港及境外服务器推荐），失败时自动回退到加速服务器。"
-        download_with_selected_source "$DOWNLOAD_SOURCE" "$BINARY_FILE" "${INSTALL_DIR}/${BINARY_NAME}" || err "下载失败！请检查网络连接。"
     else
-        info "已选择加速服务器（中国大陆服务器推荐），失败时自动回退到 GitHub。"
-        download_with_selected_source "$DOWNLOAD_SOURCE" "$BINARY_FILE" "${INSTALL_DIR}/${BINARY_NAME}" || err "下载失败！请检查网络连接。"
+        local download_url="https://github.com/${REPO}/releases/download/${TAG_PREFIX}${VERSION}/${BINARY_FILE}"
+        info "下载地址: ${download_url}"
+        download_file "$download_url" "${INSTALL_DIR}/${BINARY_NAME}" || err "GitHub 下载失败！请检查网络连接，或从 Releases 手动下载后使用 LOCAL_BINARY 安装。"
+        DOWNLOAD_SOURCE_ACTUAL="github"
     fi
 
     chmod +x "${INSTALL_DIR}/${BINARY_NAME}"

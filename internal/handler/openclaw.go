@@ -2308,13 +2308,7 @@ func SwitchFeishuVariant(cfg *config.Config, procMgr *process.Manager, sysLog ..
 		plugins = ensureFeishuPluginSelection(plugins, enableID, disableIDs)
 		entries, _ = plugins["entries"].(map[string]interface{})
 
-		// Lite 版只有内置插件目录 feishu；同时统一清理旧官方 ID 脏配置
-		if cfg.IsLiteEdition() {
-			for _, aliasID := range feishuOfficialPluginIDs {
-				delete(entries, aliasID)
-			}
-			plugins["entries"] = entries
-		}
+		// 统一清理旧官方 ID 脏配置
 		plugins = cleanupLegacyFeishuPluginIDs(plugins)
 		ocConfig["plugins"] = plugins
 

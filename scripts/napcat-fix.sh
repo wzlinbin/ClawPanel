@@ -19,9 +19,6 @@
 
 set -euo pipefail
 
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE:-http://43.248.142.249:19527}"
-CLAWPANEL_PUBLIC_BASE="${CLAWPANEL_PUBLIC_BASE%/}"
-
 # ─── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -45,7 +42,6 @@ section() { echo -e "\n${BOLD}${BLUE}[$1]${NC}"; }
 CONTAINER_NAME="openclaw-qq"
 DEFAULT_TOKEN="clawpanel-qq"
 OPENCLAW_DIR="${OPENCLAW_DIR:-$HOME/.openclaw}"
-QQ_PLUGIN_URL="${QQ_PLUGIN_URL:-${CLAWPANEL_PUBLIC_BASE}/bin/qq-plugin.tgz}"
 QQ_PLUGIN_ARCHIVE_URL="${QQ_PLUGIN_ARCHIVE_URL:-https://github.com/zhaoxinyi02/ClawPanel-Plugins/archive/refs/heads/main.tar.gz}"
 NEED_RESTART_CONTAINER=false
 NEED_RESTART_CLAWPANEL=false
@@ -458,19 +454,9 @@ if [ -d "$QQ_EXT_DIR" ] && [ -f "$QQ_EXT_DIR/openclaw.plugin.json" ]; then
 else
     warn "QQ 插件未安装或不完整，正在下载..."
     mkdir -p "${OPENCLAW_DIR}/extensions"
-    TMP_TGZ=$(mktemp)
     TMP_ARCHIVE=$(mktemp)
     TMP_EXTRACT=$(mktemp -d)
-    if curl -fsSL "$QQ_PLUGIN_URL" -o "$TMP_TGZ" 2>/dev/null; then
-        tar xzf "$TMP_TGZ" -C "${OPENCLAW_DIR}/extensions/" 2>/dev/null
-        chown -R root:root "$QQ_EXT_DIR" 2>/dev/null
-        rm -f "$TMP_TGZ"
-        if [ -f "$QQ_EXT_DIR/openclaw.plugin.json" ]; then
-            fixed "QQ 插件安装完成"
-        else
-            fail "QQ 插件下载后解压异常"
-        fi
-    elif curl -fsSL "$QQ_PLUGIN_ARCHIVE_URL" -o "$TMP_ARCHIVE" 2>/dev/null; then
+    if curl -fsSL "$QQ_PLUGIN_ARCHIVE_URL" -o "$TMP_ARCHIVE" 2>/dev/null; then
         tar xzf "$TMP_ARCHIVE" -C "$TMP_EXTRACT" 2>/dev/null || true
         if [ -d "$TMP_EXTRACT/ClawPanel-Plugins-main/official/qq" ]; then
             cp -R "$TMP_EXTRACT/ClawPanel-Plugins-main/official/qq" "$QQ_EXT_DIR"
@@ -480,9 +466,9 @@ else
             fail "QQ 插件归档解压异常"
         fi
     else
-        fail "QQ 插件下载失败 (${QQ_PLUGIN_URL})"
+        fail "QQ 插件下载失败 (${QQ_PLUGIN_ARCHIVE_URL})"
     fi
-    rm -f "$TMP_TGZ" "$TMP_ARCHIVE"
+    rm -f "$TMP_ARCHIVE"
     rm -rf "$TMP_EXTRACT"
 fi
 

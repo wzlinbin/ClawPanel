@@ -120,19 +120,6 @@ func (u *Updater) GetProgress() UpdateProgress {
 
 // DoUpdate performs the self-update
 func (u *Updater) DoUpdate(info *UpdateInfo) {
-	if u.cfg.isLiteFullPackage() {
-		u.mu.Lock()
-		u.progress = UpdateProgress{
-			Status:     "error",
-			Progress:   0,
-			Message:    "Lite 版请使用整包更新入口",
-			Log:        []string{"Lite 版当前不支持通过面板二进制热替换更新，请使用整包更新入口。"},
-			Error:      "Lite 版请使用整包更新入口",
-			FinishedAt: time.Now().Format(time.RFC3339),
-		}
-		u.mu.Unlock()
-		return
-	}
 	u.mu.Lock()
 	if u.progress.Status == "downloading" || u.progress.Status == "verifying" || u.progress.Status == "replacing" {
 		u.mu.Unlock()
@@ -395,23 +382,6 @@ func (u *Updater) resolveLocalUpdate(force bool, ensureAsset bool) (*UpdateInfo,
 		SHA256:        manifest.SHA256,
 		LocalPaths:    manifest.LocalPaths,
 	}, nil
-}
-
-func (u *Updater) fetchFromAccel() (*UpdateInfo, error) {
-	client := &http.Client{Timeout: httpTimeout}
-	resp, err := client.Get(u.cfg.AccelUpdateURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
-	}
-	var info UpdateInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, err
-	}
-	return &info, nil
 }
 
 func (u *Updater) fetchFromGitHub() (*UpdateInfo, error) {

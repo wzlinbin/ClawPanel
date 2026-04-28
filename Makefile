@@ -1,19 +1,17 @@
 PRO_VERSION ?= 5.5.0
-LITE_VERSION ?= 0.3.5
 BINARY := clawpanel
-EDITION ?= pro
 APP_NAME ?= $(BINARY)
-VERSION ?= $(if $(filter lite,$(EDITION)),$(LITE_VERSION),$(PRO_VERSION))
+VERSION ?= $(PRO_VERSION)
 MODULE := github.com/zhaoxinyi02/ClawPanel
-LDFLAGS := -s -w -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Version=$(VERSION) -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Edition=$(EDITION)
-WINDOWS_LDFLAGS := -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Version=$(VERSION) -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Edition=$(EDITION)
+LDFLAGS := -s -w -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Version=$(VERSION) -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Edition=pro
+WINDOWS_LDFLAGS := -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Version=$(VERSION) -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Edition=pro
 GOFLAGS := -trimpath
 EMBED_DIR := cmd/clawpanel/frontend/dist
 
 # npm 国内镜像
 NPM_REGISTRY := https://registry.npmmirror.com
 
-.PHONY: all clean frontend backend build dev cross cross-all installer help build-lite build-pro backend-lite backend-pro package-lite-core package-lite-plugins package-lite-qq
+.PHONY: all clean frontend backend build dev cross cross-all installer help build-pro backend-pro
 
 all: build
 
@@ -48,26 +46,11 @@ dev:
 backend-only:
 	CGO_ENABLED=0 go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o bin/$(APP_NAME) ./cmd/clawpanel/
 
-backend-lite: frontend
-	$(MAKE) backend APP_NAME=clawpanel-lite EDITION=lite
-
 backend-pro: frontend
-	$(MAKE) backend APP_NAME=clawpanel EDITION=pro
-
-build-lite: frontend
-	$(MAKE) backend-only APP_NAME=clawpanel-lite EDITION=lite
+	$(MAKE) backend APP_NAME=clawpanel
 
 build-pro: frontend
-	$(MAKE) backend-only APP_NAME=clawpanel EDITION=pro
-
-package-lite-plugins:
-	bash scripts/package-lite-plugins.sh
-
-package-lite-core: build-lite
-	bash scripts/package-lite-core.sh $(VERSION)
-
-package-lite-qq:
-	bash scripts/package-lite-qq-bundle.sh $(VERSION)
+	$(MAKE) backend-only APP_NAME=clawpanel
 
 # 交叉编译所有平台（文件名带版本号）
 cross: frontend
@@ -109,11 +92,7 @@ help:
 	@echo "  make frontend     仅构建前端"
 	@echo "  make backend      构建后端（含前端）"
 	@echo "  make backend-only 仅构建后端（需前端已构建）"
-	@echo "  make build-lite   构建 Lite Linux 版主程序"
 	@echo "  make build-pro    构建 Pro 版主程序"
-	@echo "  make package-lite-plugins 收集 Lite 预置插件"
-	@echo "  make package-lite-core  打包 Lite Core"
-	@echo "  make package-lite-qq    导出 Lite QQ Bundle"
 	@echo "  make cross        交叉编译所有平台"
 	@echo "  make installer    构建 Windows exe 安装包"
 	@echo "  make release      构建全部发布产物"

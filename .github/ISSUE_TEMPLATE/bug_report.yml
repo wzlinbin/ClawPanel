@@ -12,7 +12,7 @@ body:
     id: version
     attributes:
       label: ClawPanel 版本
-      placeholder: 例如 Pro v5.3.3 / Lite v0.2.3
+      placeholder: 例如 v5.5.0
     validations:
       required: true
   - type: input

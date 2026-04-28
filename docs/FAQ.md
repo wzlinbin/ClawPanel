@@ -26,12 +26,7 @@
 
 1. **使用代理**：设置 `https_proxy` 环境变量后重试
 2. **手动下载**：从 [GitHub Releases](https://github.com/zhaoxinyi02/ClawPanel/releases) 页面手动下载对应平台的二进制文件，放到 `/opt/clawpanel/` 目录
-3. **本机镜像**：如果你使用的是本机部署的更新镜像，可直接从面板服务器下载：
-   ```
-   export CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-   curl -fsSL "$CLAWPANEL_PUBLIC_BASE/api/panel/update-mirror/pro/files/clawpanel-v5.3.3-linux-amd64" -o /tmp/clawpanel
-   ```
-   替换版本号和平台即可
+3. **本地安装**：从 GitHub Releases 手动下载对应平台的二进制后，可使用 `LOCAL_BINARY=/path/to/clawpanel-vX.Y.Z-linux-amd64 sudo bash install.sh` 安装
 
 ### Q: macOS 安装报错 "无法验证开发者" / "已损坏"
 
@@ -157,14 +152,12 @@ sudo systemctl restart clawpanel
 
 **A:** 可能原因：
 
-1. **网络问题**：面板后端需要能访问 GitHub Releases，或能通过本机代理同步 GitHub 资产
+1. **网络问题**：面板后端需要能访问 GitHub Releases
 2. **防火墙限制**：确保服务器出站连接未被限制
-3. **服务器维护**：偶尔加速服务器可能维护中，稍后重试
 
 手动检查连通性：
 ```bash
-export CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-curl -s "$CLAWPANEL_PUBLIC_BASE/api/panel/update-mirror/pro"
+curl -I https://api.github.com/repos/zhaoxinyi02/ClawPanel/releases
 ```
 
 ### Q: 面板更新后页面没变化
@@ -177,7 +170,7 @@ curl -s "$CLAWPANEL_PUBLIC_BASE/api/panel/update-mirror/pro"
 
 ```bash
 # 1. 下载新版本（替换版本号和平台）
-wget "$CLAWPANEL_PUBLIC_BASE/api/panel/update-mirror/pro/files/clawpanel-v5.3.3-linux-amd64" -O /tmp/clawpanel
+wget "https://github.com/zhaoxinyi02/ClawPanel/releases/download/pro-v5.5.0/clawpanel-v5.5.0-linux-amd64" -O /tmp/clawpanel
 
 # 2. 替换程序
 sudo cp /tmp/clawpanel /opt/clawpanel/clawpanel
@@ -189,7 +182,8 @@ sudo systemctl restart clawpanel
 
 或重新运行安装脚本（会自动更新）：
 ```bash
-curl -fsSL "$CLAWPANEL_PUBLIC_BASE/scripts/install.sh" -o install.sh && sudo CLAWPANEL_PUBLIC_BASE="$CLAWPANEL_PUBLIC_BASE" bash install.sh
+curl -fsSL https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.sh -o install.sh
+sudo bash install.sh
 ```
 
 ---

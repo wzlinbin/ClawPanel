@@ -1,7 +1,7 @@
 {
   "latest_version": "5.5.0",
   "release_time": "2026-04-20T22:30:00+08:00",
-  "release_note": "## ClawPanel Pro v5.5.0\n\n- Hermes 平台管理页对齐 OpenClaw 通道式配置体验，补齐平台表单、侧边栏与概览交互\n- Lite 升级改为外部持久化数据目录，避免重装覆盖本地 OpenClaw / 面板数据\n- 修复 panel-chat 与 OpenClaw 新版 schema/runtime 兼容问题，并增强群聊增量回显与执行顺序",
+  "release_note": "## ClawPanel v5.5.0\n\n- Hermes 平台管理页对齐 OpenClaw 通道式配置体验，补齐平台表单、侧边栏与概览交互\n- 安装与更新链路统一收敛到 GitHub Releases\n- 修复 panel-chat 与 OpenClaw 新版 schema/runtime 兼容问题，并增强群聊增量回显与执行顺序",
   "download_urls": {
     "linux_amd64": "https://github.com/zhaoxinyi02/ClawPanel/releases/download/pro-v5.5.0/clawpanel-v5.5.0-linux-amd64",
     "linux_arm64": "https://github.com/zhaoxinyi02/ClawPanel/releases/download/pro-v5.5.0/clawpanel-v5.5.0-linux-arm64",

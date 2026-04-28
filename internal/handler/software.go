@@ -321,43 +321,11 @@ func GetSoftwareList(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var list []SoftwareInfo
 
-		if cfg.IsLiteEdition() {
-			ocVer := detectOpenClawVersion(cfg)
-			if strings.TrimSpace(ocVer) == "" || ocVer == "installed" {
-				ocVer = pinnedOpenClawVersion
-			}
-			list = append(list, SoftwareInfo{
-				ID: "openclaw", Name: "OpenClaw", Description: "Lite 内嵌 AI 助手核心引擎",
-				Version: ocVer, Installed: true, Installable: false,
-				Status: boolStatus(true), Category: "service", Icon: "brain",
-			})
-			hermesStatus := detectHermesStatus()
-			hermesInstalled := hermesStatus.Installed
-			hermesState := "not_installed"
-			if hermesInstalled {
-				switch {
-				case hermesStatus.GatewayRunning:
-					hermesState = "running"
-				case hermesStatus.Running:
-					hermesState = "running"
-				default:
-					hermesState = "installed"
-				}
-			}
-			list = append(list, SoftwareInfo{
-				ID: "hermes", Name: "Hermes Agent", Description: "Nous Research 的独立 AI Agent 运行时",
-				Version: hermesStatus.Version, Installed: hermesInstalled, Installable: true,
-				Status: hermesState, Category: "service", Icon: "sparkles",
-			})
-			c.JSON(http.StatusOK, gin.H{"ok": true, "software": list, "platform": runtime.GOOS})
-			return
-		}
-
 		// Node.js
 		nodeVer := detectCmd("node", "--version")
 		list = append(list, SoftwareInfo{
 			ID: "nodejs", Name: "Node.js", Description: "JavaScript 运行时",
-			Version: nodeVer, Installed: nodeVer != "", Installable: !cfg.IsLiteEdition(),
+			Version: nodeVer, Installed: nodeVer != "", Installable: true,
 			Status: boolStatus(nodeVer != ""), Category: "runtime", Icon: "terminal",
 		})
 
@@ -381,7 +349,7 @@ func GetSoftwareList(cfg *config.Config) gin.HandlerFunc {
 		gitVer := detectCmd("git", "--version")
 		list = append(list, SoftwareInfo{
 			ID: "git", Name: "Git", Description: "版本控制系统",
-			Version: gitVer, Installed: gitVer != "", Installable: !cfg.IsLiteEdition(),
+			Version: gitVer, Installed: gitVer != "", Installable: true,
 			Status: boolStatus(gitVer != ""), Category: "runtime", Icon: "git-branch",
 		})
 
@@ -417,7 +385,7 @@ func GetSoftwareList(cfg *config.Config) gin.HandlerFunc {
 		ocVer := detectOpenClawVersion(cfg)
 		list = append(list, SoftwareInfo{
 			ID: "openclaw", Name: "OpenClaw", Description: "AI 助手核心引擎",
-			Version: ocVer, Installed: ocVer != "", Installable: !cfg.IsLiteEdition(),
+			Version: ocVer, Installed: ocVer != "", Installable: true,
 			Status: boolStatus(ocVer != ""), Category: "service", Icon: "brain",
 		})
 
@@ -783,32 +751,6 @@ func ensureOpenClawManualPrerequisites() error {
 }
 
 func detectOpenClawVersion(cfg *config.Config) string {
-	if cfg != nil && cfg.IsLiteEdition() {
-		if cfg.OpenClawApp != "" {
-			pkgPath := filepath.Join(cfg.OpenClawApp, "package.json")
-			if v := readVersionFromPackageJSON(pkgPath); v != "" {
-				return v
-			}
-		}
-		if cmd, err := cfg.OpenClawCommand("--version"); err == nil && cmd != nil {
-			cmd.Env = config.BuildExecEnv()
-			if out, err := cmd.Output(); err == nil {
-				if v := strings.TrimPrefix(strings.TrimSpace(string(out)), "v"); v != "" {
-					return v
-				}
-			}
-		}
-		ocConfig, _ := cfg.ReadOpenClawJSON()
-		if ocConfig != nil {
-			if meta, ok := ocConfig["meta"].(map[string]interface{}); ok {
-				if v, ok := meta["lastTouchedVersion"].(string); ok && v != "" {
-					return v
-				}
-			}
-		}
-		return ""
-	}
-
 	// 1. Try reading from cfg.OpenClawApp FIRST (most reliable for SYSTEM service)
 	if cfg.OpenClawApp != "" {
 		pkgPath := filepath.Join(cfg.OpenClawApp, "package.json")
@@ -983,10 +925,6 @@ func readVersionFromPackageJSON(path string) string {
 // DetectOpenClawInstances 检测所有 OpenClaw 安装实例
 func DetectOpenClawInstances(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if cfg.IsLiteEdition() {
-			c.JSON(http.StatusOK, gin.H{"ok": true, "instances": []OpenClawInstance{}})
-			return
-		}
 		var instances []OpenClawInstance
 
 		// 1. npm global install
@@ -1102,14 +1040,6 @@ func InstallSoftware(cfg *config.Config, tm *taskman.Manager) gin.HandlerFunc {
 		if err := c.ShouldBindJSON(&req); err != nil || req.Software == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "software required"})
 			return
-		}
-
-		if cfg.IsLiteEdition() {
-			switch req.Software {
-			case "openclaw", "nodejs", "git":
-				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "Lite 版已内置 OpenClaw 运行环境，不支持安装或切换此组件"})
-				return
-			}
 		}
 
 		if tm.HasRunningTask("install_" + req.Software) {
@@ -1886,7 +1816,7 @@ install_openclaw_offline() {
   tmp_dir=$(mktemp -d)
   local pkg_path="$tmp_dir/$pkg"
 
-  echo "📦 尝试从加速服务器安装 OpenClaw %s 离线包..."
+  echo "📦 尝试从 GitHub 安装 OpenClaw %s 离线包..."
   if ! curl -fsSL --max-time 600 "$base_url/$pkg" -o "$pkg_path"; then
     rm -rf "$tmp_dir"
     return 1

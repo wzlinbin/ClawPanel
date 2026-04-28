@@ -127,19 +127,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
         </button>
       </div>
       <div id="source-section" class="source-box hidden">
-        <div class="warn-box">🌐 更新说明：<span>更新元数据和二进制会先同步到本机缓存目录，再从本机缓存执行替换，降低停服后网络抖动导致的失败概率。</span></div>
+        <div class="warn-box">🌐 更新说明：<span>更新元数据和二进制将从 GitHub Releases 获取，并在替换前完成 SHA256 校验。</span></div>
         <label class="source-option">
-          <input type="radio" name="download-source" value="github">
+          <input type="radio" name="download-source" value="github" checked>
           <div>
-            <div class="source-title">本机镜像</div>
-            <div class="source-desc">推荐；先通过代理同步 GitHub Release 到本机，再从本机缓存更新。</div>
-          </div>
-        </label>
-        <label class="source-option">
-          <input type="radio" name="download-source" value="accel">
-          <div>
-            <div class="source-title">本机镜像</div>
-            <div class="source-desc">兼容保留项；当前同样走本机缓存，不再依赖外部加速服务器。</div>
+            <div class="source-title">GitHub Releases</div>
+            <div class="source-desc">当前唯一更新源；不再使用旧自建镜像或第三方同步源。</div>
           </div>
         </label>
       </div>
@@ -225,13 +218,12 @@ const CFG = MODE === 'openclaw' ? {
 const SOURCE_STORAGE_KEY = 'clawpanel-update-source:' + EDITION + ':' + MODE;
 
 function getSelectedSource() {
-  const checked = document.querySelector('input[name="download-source"]:checked');
-  return checked ? checked.value : (localStorage.getItem(SOURCE_STORAGE_KEY) || 'accel');
+  return 'github';
 }
 
 function setSelectedSource(value) {
-  const normalized = value === 'github' ? 'github' : 'accel';
-  const radio = document.querySelector('input[name="download-source"][value="' + normalized + '"]');
+  const normalized = 'github';
+  const radio = document.querySelector('input[name="download-source"][value="github"]');
   if (radio) radio.checked = true;
   localStorage.setItem(SOURCE_STORAGE_KEY, normalized);
 }
@@ -258,17 +250,7 @@ async function init() {
   }
   if (MODE === 'clawpanel') {
     document.getElementById('source-section').classList.remove('hidden');
-    setSelectedSource(localStorage.getItem(SOURCE_STORAGE_KEY) || 'accel');
-    document.querySelectorAll('input[name="download-source"]').forEach(function(el){
-      el.addEventListener('change', function(){
-        setSelectedSource(el.value);
-        checkVersion();
-      });
-    });
-    if (EDITION === 'lite') {
-      document.getElementById('btn-upload').innerHTML = '📁 离线更新：上传 Lite 整包<span style="font-size:.65rem;color:var(--muted)">支持上传 .tar.gz，保留现有 data 目录</span>';
-      document.getElementById('file-input').setAttribute('accept', '.tar.gz,.tgz,*');
-    }
+    setSelectedSource('github');
   }
 
   // Validate token
@@ -329,7 +311,6 @@ function confirmUpdate() {
   }
   if (MODE === 'clawpanel') {
     t += '\\n\\n更新来源：本机更新镜像';
-    if (EDITION === 'lite') t += '\\n本次将整包更新 Lite（面板 + 内置 OpenClaw + 预置插件），不会覆盖现有 data 目录。';
   }
   document.getElementById('confirm-text').textContent = t;
   const modal = document.getElementById('confirm-modal');

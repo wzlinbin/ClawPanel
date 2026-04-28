@@ -220,7 +220,7 @@ func AIChat(cfg *config.Config) gin.HandlerFunc {
 - 技能系统: 支持 65+ 内置技能和自定义技能
 - 面板默认端口: 19527，默认密码: clawpanel
 - 面板数据目录: ~/.clawpanel/
-- 面板支持一键自检更新（国内加速服务器）
+- 面板支持一键自检更新（GitHub Releases）
 
 回答要简洁、准确、友好。使用 Markdown 格式。优先根据 FAQ 文档回答，如果 FAQ 中没有相关内容再根据你的知识回答。%s`, pid, mid, apiType, faqSection)
 

@@ -53,8 +53,6 @@ func DetectOpenClawBinaryPath() string {
 	if exe, err := os.Executable(); err == nil && exe != "" {
 		installRoot := filepath.Dir(exe)
 		for _, candidate := range []string{
-			filepath.Join(installRoot, "bin", "clawlite-openclaw"),
-			filepath.Join(installRoot, "bin", "clawlite-openclaw.cmd"),
 			filepath.Join(installRoot, "runtime", "bin", "openclaw"),
 			filepath.Join(installRoot, "runtime", "bin", "openclaw.cmd"),
 		} {

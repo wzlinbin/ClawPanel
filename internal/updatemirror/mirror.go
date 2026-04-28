@@ -308,14 +308,8 @@ func matchUpdateAsset(edition, version, assetName string) (string, bool) {
 }
 
 func updateAssetName(edition, version, platformKey string) string {
+	_ = edition
 	prefix := "clawpanel"
-	if strings.EqualFold(strings.TrimSpace(edition), "lite") {
-		suffix := strings.ReplaceAll(platformKey, "_", "-")
-		if strings.TrimSpace(suffix) == "" {
-			return ""
-		}
-		return fmt.Sprintf("clawpanel-lite-core-v%s-%s.tar.gz", version, suffix)
-	}
 	name := fmt.Sprintf("%s-v%s-%s", prefix, version, strings.ReplaceAll(platformKey, "_", "-"))
 	if strings.HasPrefix(platformKey, "windows_") {
 		name += ".exe"

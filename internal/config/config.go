@@ -172,19 +172,12 @@ func Load() (*Config, error) {
 }
 
 func normalizeEdition(raw string) string {
-	switch strings.TrimSpace(strings.ToLower(raw)) {
-	case "lite":
-		return "lite"
-	default:
-		return "pro"
-	}
+	_ = raw
+	return "pro"
 }
 
 func (c *Config) IsLiteEdition() bool {
-	if c == nil {
-		return buildinfo.IsLite()
-	}
-	return normalizeEdition(c.Edition) == "lite"
+	return false
 }
 
 func (c *Config) IsProEdition() bool {
@@ -289,8 +282,8 @@ func (c *Config) BundledNodeBinaryPath() string {
 
 func (c *Config) BundledOpenClawLauncherPath() string {
 	for _, candidate := range []string{
-		filepath.Join(c.InstallRoot(), "bin", "clawlite-openclaw"),
-		filepath.Join(c.InstallRoot(), "bin", "clawlite-openclaw.cmd"),
+		filepath.Join(c.InstallRoot(), "runtime", "bin", "openclaw"),
+		filepath.Join(c.InstallRoot(), "runtime", "bin", "openclaw.cmd"),
 	} {
 		if fileExists(candidate) {
 			return candidate
@@ -317,7 +310,7 @@ func (c *Config) OpenClawCommand(args ...string) (*exec.Cmd, error) {
 		if strings.HasSuffix(entry, ".mjs") {
 			node := c.BundledNodeBinaryPath()
 			if node == "" {
-				return nil, fmt.Errorf("Lite 版未找到内置 Node.js 运行时")
+				return nil, fmt.Errorf("未找到内置 Node.js 运行时")
 			}
 			cmd := exec.Command(node, append([]string{entry}, args...)...)
 			cmd.Dir = c.BundledOpenClawWorkingDir()

@@ -2,18 +2,15 @@
 # ClawPanel 一键安装脚本 (Windows PowerShell)
 # 兼容 PowerShell 5.1 及以上版本
 # 用法 (管理员 PowerShell):
-#   irm http://43.248.142.249:19527/scripts/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.ps1 | iex
 # 或:
-#   Invoke-WebRequest -Uri http://43.248.142.249:19527/scripts/install.ps1 -OutFile install.ps1; .\install.ps1
+#   Invoke-WebRequest -Uri https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/install.ps1 -OutFile install.ps1; .\install.ps1
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 
-$ClawPanelPublicBase = if ($env:CLAWPANEL_PUBLIC_BASE) { $env:CLAWPANEL_PUBLIC_BASE.TrimEnd('/') } else { "http://43.248.142.249:19527" }
 $REPO = "zhaoxinyi02/ClawPanel"
 $TAG_PREFIX = "pro-v"
-$ACCEL_BASE = if ($env:ACCEL_BASE) { $env:ACCEL_BASE } else { "$ClawPanelPublicBase/api/panel/update-mirror" }
-$ACCEL_META = if ($env:ACCEL_META_URL) { $env:ACCEL_META_URL } else { "$ACCEL_BASE/pro" }
 $INSTALL_DIR = "C:\ClawPanel"
 $SERVICE_NAME = "ClawPanel"
 $PORT = "19527"
@@ -22,38 +19,20 @@ $PORT = "19527"
 Write-Host "  [ClawPanel] 获取最新版本信息..." -ForegroundColor Cyan
 try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $releaseInfo = Invoke-RestMethod -Uri $ACCEL_META -UseBasicParsing
-    $tag = [string]$releaseInfo.latest_version
-    if ([string]::IsNullOrWhiteSpace($tag)) {
-        throw "empty latest_version"
-    }
-    $VERSION = $tag -replace '^v', ''
+    $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/$REPO/releases?per_page=20" -UseBasicParsing
+    $tag = [string](($releaseInfo | Where-Object { $_.tag_name -like "$TAG_PREFIX*" } | Select-Object -First 1).tag_name)
+    $VERSION = $tag -replace "^$TAG_PREFIX", ''
     if ([string]::IsNullOrWhiteSpace($VERSION) -or ($VERSION -notmatch '^[0-9][0-9A-Za-z._-]*$')) {
         throw "invalid tag_name: $tag"
     }
     Write-Host "  [ClawPanel] 最新版本: v$VERSION" -ForegroundColor Green
 } catch {
     Write-Host "  [ClawPanel] 无法获取最新版本，使用默认版本..." -ForegroundColor Yellow
-    try {
-        $releaseInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/$REPO/releases?per_page=20" -UseBasicParsing
-        $tag = [string](($releaseInfo | Where-Object { $_.tag_name -like "$TAG_PREFIX*" } | Select-Object -First 1).tag_name)
-        $VERSION = $tag -replace "^$TAG_PREFIX", ''
-    } catch {
-        $VERSION = "5.2.15"
-    }
+    $VERSION = "5.5.0"
 }
 
 $BINARY_NAME = "clawpanel-v${VERSION}-windows-amd64.exe"
 $LocalBinary = $env:LOCAL_BINARY
-$DownloadSource = if ($env:DOWNLOAD_SOURCE) { $env:DOWNLOAD_SOURCE } else { $null }
-
-if (-not $DownloadSource) {
-    Write-Host "  [ClawPanel] 请选择下载线路：" -ForegroundColor Cyan
-    Write-Host "    1) GitHub      中国香港及境外服务器推荐" -ForegroundColor White
-    Write-Host "    2) 加速服务器  中国大陆服务器推荐，更稳当一些" -ForegroundColor White
-    $sourceChoice = Read-Host "  请输入 [1/2]（默认 2）"
-    if ($sourceChoice -eq '1') { $DownloadSource = 'github' } else { $DownloadSource = 'accel' }
-}
 
 # ==================== 工具函数 ====================
 function Log($msg)  { Write-Host "  [ClawPanel] $msg" -ForegroundColor Green }
@@ -105,20 +84,16 @@ Log "目录已创建: $INSTALL_DIR"
 
 # ---- Step 2 ----
 Step 2 $TOTAL "下载 ClawPanel v$VERSION..."
-$downloadUrl = if ($DownloadSource -eq "github") { "https://github.com/$REPO/releases/download/${TAG_PREFIX}${VERSION}/$BINARY_NAME" } else { "$ACCEL_BASE/pro/files/$BINARY_NAME" }
-$fallbackUrl = if ($DownloadSource -eq "github") { "$ACCEL_BASE/pro/files/$BINARY_NAME" } else { "https://github.com/$REPO/releases/download/${TAG_PREFIX}${VERSION}/$BINARY_NAME" }
+$downloadUrl = "https://github.com/$REPO/releases/download/${TAG_PREFIX}${VERSION}/$BINARY_NAME"
 $targetPath = "$INSTALL_DIR\clawpanel.exe"
 if ($LocalBinary) {
     if (-not (Test-Path $LocalBinary)) { Err "指定的本地构建包不存在: $LocalBinary" }
     $targetPath = "$INSTALL_DIR\clawpanel.exe"
     Copy-Item -Path $LocalBinary -Destination $targetPath -Force
-    Info "已使用当前目录中的本地 Pro 构建包进行安装。"
-} elseif ($DownloadSource -eq 'github') {
-    Info "已选择 GitHub（中国香港及境外服务器推荐），失败时自动回退到加速服务器。"
+    Info "已使用当前目录中的本地构建包进行安装。"
 } else {
-    Info "已选择加速服务器（中国大陆服务器推荐），失败时自动回退到 GitHub。"
+    Info "下载地址: $downloadUrl"
 }
-if (-not $LocalBinary) { Info "下载地址: $downloadUrl" }
 
 try {
     # 停止旧服务
@@ -128,11 +103,7 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $ProgressPreference = 'SilentlyContinue'
     if (-not $LocalBinary) {
-        try {
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $targetPath -UseBasicParsing
-        } catch {
-            Invoke-WebRequest -Uri $fallbackUrl -OutFile $targetPath -UseBasicParsing
-        }
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $targetPath -UseBasicParsing
     }
     $fileSize = [math]::Round((Get-Item $targetPath).Length / 1MB, 1)
     Log "下载完成 (${fileSize} MB)"

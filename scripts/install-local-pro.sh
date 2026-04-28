@@ -35,11 +35,11 @@ else
 fi
 
 if [[ -z "${candidate:-}" || ! -f "$candidate" ]]; then
-  echo "当前目录未找到匹配的 Pro 构建包：$pattern" >&2
+  echo "当前目录未找到匹配的 ClawPanel 构建包：$pattern" >&2
   exit 1
 fi
 
-echo "检测到本地 Pro 构建包：$candidate"
+echo "检测到本地 ClawPanel 构建包：$candidate"
 if [[ "$SYS_OS" == linux || "$SYS_OS" == darwin ]]; then
   sudo LOCAL_BINARY="$(pwd)/${candidate#./}" bash "$SCRIPT_DIR/install.sh"
 else

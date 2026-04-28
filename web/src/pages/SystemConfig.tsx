@@ -1967,7 +1967,7 @@ export default function SystemConfig() {
                 </div>
               </div>
               
-              {!versionInfo.bundled && <div className={`${modern ? 'rounded-[22px] p-4 border border-blue-100/70 dark:border-blue-800/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.78),rgba(239,246,255,0.58))] dark:bg-[linear-gradient(145deg,rgba(12,24,42,0.82),rgba(30,64,175,0.1))] flex items-center gap-4 backdrop-blur-xl' : 'bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800 flex items-center gap-4'}`}>
+              <div className={`${modern ? 'rounded-[22px] p-4 border border-blue-100/70 dark:border-blue-800/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.78),rgba(239,246,255,0.58))] dark:bg-[linear-gradient(145deg,rgba(12,24,42,0.82),rgba(30,64,175,0.1))] flex items-center gap-4 backdrop-blur-xl' : 'bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800 flex items-center gap-4'}`}>
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${versionInfo.updateAvailable ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'}`}>
                   {versionInfo.updateAvailable ? <AlertTriangle size={20} /> : <CheckCircle size={20} />}
                 </div>
@@ -1975,20 +1975,20 @@ export default function SystemConfig() {
                   <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">最新版本</p>
                   <p className="text-base font-bold text-gray-900 dark:text-white font-mono mt-0.5">{versionInfo.latestVersion || '-'}</p>
                 </div>
-              </div>}
+              </div>
               
               <div className={`${modern ? 'rounded-[22px] p-4 border border-blue-100/70 dark:border-blue-800/20 bg-[linear-gradient(145deg,rgba(255,255,255,0.78),rgba(239,246,255,0.58))] dark:bg-[linear-gradient(145deg,rgba(12,24,42,0.82),rgba(30,64,175,0.1))] flex items-center gap-4 backdrop-blur-xl' : 'bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800 flex items-center gap-4'}`}>
                 <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                  {versionInfo.bundled ? <Shield size={20} className="text-gray-400" /> : <RefreshCw size={20} className="text-gray-400" />}
+                  <RefreshCw size={20} className="text-gray-400" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{versionInfo.bundled ? '版本来源' : '上次检查'}</p>
-                  <p className="text-xs text-gray-700 dark:text-gray-300 mt-1 font-medium">{versionInfo.bundled ? 'Lite 内嵌运行时' : (versionInfo.lastCheckedAt ? new Date(versionInfo.lastCheckedAt).toLocaleString('zh-CN') : versionInfo.checkedAt ? new Date(versionInfo.checkedAt).toLocaleString('zh-CN') : '-')}</p>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">上次检查</p>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 mt-1 font-medium">{versionInfo.lastCheckedAt ? new Date(versionInfo.lastCheckedAt).toLocaleString('zh-CN') : versionInfo.checkedAt ? new Date(versionInfo.checkedAt).toLocaleString('zh-CN') : '-'}</p>
                 </div>
               </div>
             </div>
 
-            {!versionInfo.bundled && <UpdateSection versionInfo={versionInfo} updating={updating} setUpdating={setUpdating} updateStatus={updateStatus} setUpdateStatus={setUpdateStatus} updateLog={updateLog} setUpdateLog={setUpdateLog} checking={checking} setChecking={setChecking} setVersionInfo={setVersionInfo} setMsg={setMsg} loadVersion={loadVersion} />}
+            <UpdateSection versionInfo={versionInfo} updating={updating} setUpdating={setUpdating} updateStatus={updateStatus} setUpdateStatus={setUpdateStatus} updateLog={updateLog} setUpdateLog={setUpdateLog} checking={checking} setChecking={setChecking} setVersionInfo={setVersionInfo} setMsg={setMsg} loadVersion={loadVersion} />
           </div>
 
           {/* ClawPanel 面板自检更新 */}
@@ -2493,9 +2493,9 @@ function PanelUpdateSection() {
   return (
     <div className="page-modern-panel p-6 space-y-5">
       <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <Box size={16} className="text-blue-500" /> {edition === 'lite' ? 'ClawPanel Lite 版本更新' : 'ClawPanel 版本更新'}
+        <Box size={16} className="text-blue-500" /> ClawPanel 版本更新
         <span className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-900 px-2 py-0.5 rounded ml-1">{panelVersion || '...'}</span>
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${edition === 'lite' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'}`}>{edition === 'lite' ? 'Lite 版' : 'Pro 版'}</span>
+        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">标准版</span>
         <span className="text-[10px] text-gray-400 ml-auto">🛡️ 独立更新工具</span>
       </h3>
 
@@ -2505,7 +2505,7 @@ function PanelUpdateSection() {
             <Box size={20} className="text-blue-600 dark:text-blue-300" />
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">当前版本 · {edition === 'lite' ? 'Lite' : 'Pro'}</p>
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">当前版本 · Standard</p>
             <p className="text-base font-bold text-gray-900 dark:text-white font-mono mt-0.5">{panelVersion || '加载中...'}</p>
           </div>
         </div>
@@ -2568,12 +2568,6 @@ function PanelUpdateSection() {
             <AlertTriangle size={14} className="shrink-0" />
             <span>发现新版本 <strong>{panelUpdateInfo.latestVersion}</strong>（发布于 {panelUpdateInfo.releaseTime ? new Date(panelUpdateInfo.releaseTime).toLocaleString('zh-CN') : '-'}）</span>
           </div>
-          {edition === 'lite' && (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-xs text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900/30">
-              <Shield size={14} className="shrink-0" />
-              <span>Lite 面板内更新会下载当前版本对应的整包，自动同步面板、内置 OpenClaw 与预置插件，同时保留你的现有 data 目录与通道配置。</span>
-            </div>
-          )}
           <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
             {panelUpdateInfo.releaseNote}
           </div>
@@ -3669,9 +3663,7 @@ function SoftwareEnvironment({ envInfo, onRefresh }: { envInfo: any; onRefresh: 
     { id: 'napcat', name: getSw('napcat')?.name || 'NapCat (QQ个人号)', value: getSw('napcat')?.version || null, required: false, category: 'container', installable: getSw('napcat')?.installable ?? true, status: getSw('napcat')?.status },
     { id: 'wechat', name: getSw('wechat')?.name || '微信机器人', value: getSw('wechat')?.version || null, required: false, category: 'container', installable: getSw('wechat')?.installable ?? true, status: getSw('wechat')?.status },
   ];
-  const visibleSoftwareList = edition === 'lite'
-    ? softwareList.filter(s => s.id === 'openclaw').map(s => ({ ...s, value: s.value || '2026.2.26' }))
-    : softwareList;
+  const visibleSoftwareList = softwareList;
 
   const handleInstall = async (id: string) => {
     setInstalling(id);

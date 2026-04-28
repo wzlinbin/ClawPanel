@@ -114,9 +114,6 @@ interface ChannelMeta {
   defaultAccount?: string;
 }
 
-const LITE_WORKSPACE_ROOT = '/opt/clawpanel-lite/data/openclaw-work';
-const LITE_AGENT_ROOT = '/opt/clawpanel-lite/data/openclaw-config/agents';
-
 interface AgentModelResponse {
   ok?: boolean;
   providers?: Record<string, any>;
@@ -1355,8 +1352,6 @@ function AgentsPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [identityImportMsg, setIdentityImportMsg] = useState('');
-  const [edition, setEdition] = useState<'lite' | 'pro'>('pro');
-
   const [workbenchView, setWorkbenchView] = useState<AgentsWorkbenchView>('directory');
   const [selectedAgentId, setSelectedAgentId] = useState('');
   const [detailTab, setDetailTab] = useState<AgentDetailTab>('overview');
@@ -1415,15 +1410,13 @@ function AgentsPage() {
   const displayWorkspacePath = (workspace?: string) => {
     const value = (workspace || '').trim();
     if (value) return value;
-    return edition === 'lite' ? LITE_WORKSPACE_ROOT : '未设置';
+    return '未设置';
   };
 
   const displayAgentDirPath = (agentDir?: string, agentId?: string) => {
     const value = (agentDir || '').trim();
     if (value) return value;
-    const resolvedAgentId = (agentId || '').trim();
-    if (edition === 'lite' && resolvedAgentId) return `${LITE_AGENT_ROOT}/${resolvedAgentId}`;
-    return edition === 'lite' ? LITE_AGENT_ROOT : '未设置';
+    return '未设置';
   };
 
   const channelOptions = useMemo(() => {
@@ -1847,12 +1840,6 @@ function AgentsPage() {
       setTimeout(() => setMsg(''), 4000);
     }
   };
-
-  useEffect(() => {
-    api.getPanelVersion().then(r => {
-      if (r.ok && (r.edition === 'lite' || r.edition === 'pro')) setEdition(r.edition);
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     loadData();

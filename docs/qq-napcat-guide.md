@@ -119,17 +119,15 @@
 
 ```bash
 # 下载并运行诊断修复脚本
-export CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-curl -fsSL "$CLAWPANEL_PUBLIC_BASE/scripts/napcat-fix.sh" -o napcat-fix.sh
-sudo CLAWPANEL_PUBLIC_BASE="$CLAWPANEL_PUBLIC_BASE" bash napcat-fix.sh
+curl -fsSL https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/napcat-fix.sh -o napcat-fix.sh
+sudo bash napcat-fix.sh
 ```
 
 ### Windows（一键修复）
 
 ```powershell
 # 以管理员身份运行 PowerShell
-$env:CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-irm "$env:CLAWPANEL_PUBLIC_BASE/scripts/fix-qq-napcat.ps1" | iex
+irm https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/fix-qq-napcat.ps1 | iex
 ```
 
 ### 手动安装步骤
@@ -191,8 +189,7 @@ docker exec openclaw-qq cat /app/napcat/config/onebot11.json
 **修复**：
 ```powershell
 # 运行诊断脚本
-$env:CLAWPANEL_PUBLIC_BASE="http://43.248.142.249:19527"
-irm "$env:CLAWPANEL_PUBLIC_BASE/scripts/fix-qq-napcat.ps1" | iex
+irm https://raw.githubusercontent.com/zhaoxinyi02/ClawPanel/main/scripts/fix-qq-napcat.ps1 | iex
 ```
 
 ## 七、网络端口说明

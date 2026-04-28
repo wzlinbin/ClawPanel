@@ -3236,7 +3236,7 @@ export default function Channels() {
               {currentDef.id === 'feishu' && String(getEffectiveChannelConfig('feishu')?.dmPolicy || 'pairing') === 'pairing' && (
                 <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/80 dark:bg-amber-900/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300 leading-relaxed space-y-1.5">
                   <div className="font-semibold text-amber-900 dark:text-amber-100">飞书当前处于配对模式</div>
-                  <div>首次私聊机器人时，OpenClaw 会返回 pairing code。Lite 版保存有凭证时会优先写成免配对模式；如果你看到这里，重新保存一次配置通常就会改成免配对。</div>
+                  <div>首次私聊机器人时，OpenClaw 会返回 pairing code。保存有凭证时会优先写成免配对模式；如果你看到这里，重新保存一次配置通常就会改成免配对。</div>
                   <div>现在可以直接在上方“统一配对审批”中查看并批准请求；只有在需要排查底层文件时才需要回 CLI。</div>
                 </div>
               )}
@@ -3250,7 +3250,7 @@ export default function Channels() {
               {currentDef.id === 'wecom' && String(getEffectiveChannelConfig('wecom')?.dmPolicy || 'pairing') === 'pairing' && (
                 <div className="rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/80 dark:bg-amber-900/10 px-4 py-3 text-xs text-amber-700 dark:text-amber-300 leading-relaxed space-y-1.5">
                   <div className="font-semibold text-amber-900 dark:text-amber-100">企业微信当前处于配对模式</div>
-                  <div>Lite 版保存 Bot ID 和 Secret 时会优先写成免配对模式；如果你看到这里，重新保存一次配置通常就会改成免配对。</div>
+                  <div>保存 Bot ID 和 Secret 时会优先写成免配对模式；如果你看到这里，重新保存一次配置通常就会改成免配对。</div>
                   <div>现在可以直接在上方“统一配对审批”中查看并批准请求；只有在需要排查底层文件时才需要回 CLI。</div>
                 </div>
               )}
