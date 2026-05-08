@@ -121,11 +121,11 @@ function PanelSettingsModal({ open, onClose, onLogout, locale }: { open: boolean
   };
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-[28px] border border-blue-100/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(239,246,255,0.92))] p-6 shadow-[0_28px_80px_rgba(15,23,42,0.22)] dark:border-blue-800/30 dark:bg-[linear-gradient(145deg,rgba(12,24,42,0.98),rgba(30,64,175,0.16))]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/62 px-4" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] p-6 shadow-[var(--ui-shadow-strong)]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] pb-5">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-blue-50/70 px-3 py-1 text-[11px] font-semibold text-blue-600 dark:border-blue-800/40 dark:bg-blue-950/30 dark:text-blue-300">
+            <div className="inline-flex items-center gap-2 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--ui-accent)]">
               <Settings size={13} />
               {locale === 'zh-CN' ? '面板设置' : 'Panel Settings'}
             </div>
@@ -136,15 +136,15 @@ function PanelSettingsModal({ open, onClose, onLogout, locale }: { open: boolean
               {locale === 'zh-CN' ? '这里只放与 API2CN 面板自身相关的配置，不影响 OpenClaw 或 Hermes 平台参数。' : 'This dialog only contains API2CN-specific settings, separate from OpenClaw and Hermes.'}
             </p>
           </div>
-          <button onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-slate-500 transition-colors hover:text-slate-800 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:text-white">
+          <button onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel)] text-[var(--ui-muted)] transition-colors hover:text-[var(--ui-heading)]">
             <X size={16} />
           </button>
         </div>
 
-        <div className="mt-6">
-          <div className="rounded-[24px] border border-gray-100 bg-white/90 p-5 dark:border-gray-800 dark:bg-slate-900/55">
+        <div className="mt-5">
+          <div className="rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel)] p-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-blue-100/70 bg-blue-100/80 p-1.5 text-blue-600 dark:border-blue-800/30 dark:bg-blue-900/20">
+              <div className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-accent-soft)] p-1.5 text-[var(--ui-accent)]">
                 <Key size={16} />
               </div>
               <div>
@@ -521,32 +521,31 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
 
   return (
     <div className="flex h-screen overflow-hidden ui-modern-shell" data-ui-perf={reducedPerfMode ? 'reduced' : undefined}>
-      {open && <div className="fixed inset-0 z-40 bg-slate-950/42 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)} />}
+      {open && <div className="fixed inset-0 z-40 bg-slate-950/56 lg:hidden" onClick={() => setOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[88vw] max-w-[320px] flex-col ui-modern-sidebar transition-transform duration-300 lg:static lg:w-64 lg:max-w-none lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
-        <div className="px-4 py-4 border-b border-slate-200/70">
+        <div className="border-b border-[var(--ui-border)] px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-2xl border border-slate-200/70 bg-white/90 shadow-[0_10px_24px_rgba(15,23,42,0.06)] dark:border-slate-700/70 dark:bg-slate-900/90">
-              <img src="/logo.jpg" alt="API2CN" className="w-8 h-8 rounded-xl object-cover" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] shadow-sm">
+              <img src="/logo.jpg" alt="API2CN" className="h-8 w-8 rounded-md object-cover" />
             </div>
-            <div>
-              <h1 className="font-bold text-sm tracking-tight text-gray-900 dark:text-white">API2CN</h1>
-              <p className="text-[10px] font-medium -mt-0.5 text-slate-500">{activeAgent.name} · {activeAgent.subtitle}</p>
+            <div className="min-w-0">
+              <h1 className="text-sm font-black tracking-[-0.02em] text-[var(--ui-heading)]">API2CN</h1>
+              <p className="-mt-0.5 truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ui-faint)]">{activeAgent.name} · {activeAgent.subtitle}</p>
             </div>
           </div>
         </div>
 
         {/* Connected channel indicators */}
         {connectedChannels.length > 0 && (
-          <div className="px-4 py-3 border-b space-y-1.5 border-slate-200/70">
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 text-slate-400">
+          <div className="space-y-2 border-b border-[var(--ui-border)] px-4 py-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--ui-faint)]">
               {isHermesBoard ? (locale === 'zh-CN' ? '运行中的平台' : 'Active Platforms') : t.nav.runningStatus}
             </div>
             {connectedChannels.map((ch: RuntimeChannelSummary) => (
-              <div key={ch.label} className="flex items-center gap-2 text-xs">
+              <div key={ch.label} className="flex items-center gap-2 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] px-2.5 py-2 text-xs">
                 <span className={`relative flex h-2 w-2 shrink-0`}>
-                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${ch.connected ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${ch.connected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                  <span className={`relative inline-flex h-2 w-2 rounded-full ${ch.connected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
                 </span>
                 <div className="min-w-0 flex-1">
                   <span className="text-gray-600 dark:text-gray-300 font-medium block truncate">{ch.label}</span>
@@ -565,17 +564,17 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} end={to === '/' || to === '/hermes'} onClick={() => setOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] transition-all duration-200 group border ${isActive ? 'ui-modern-nav-link active font-semibold translate-x-0.5' : 'ui-modern-nav-link border-transparent hover:-translate-y-0.5 hover:translate-x-0.5 hover:border-blue-100/80 hover:text-slate-900'}`
+                `ui-modern-nav-link group flex items-center gap-3 px-3.5 py-2.5 pl-4 text-[13px] transition-colors ${isActive ? 'active font-bold' : 'font-semibold'}`
               }>
-              <Icon size={18} className="shrink-0 transition-transform duration-200 group-hover:scale-105 group-hover:-rotate-3" />
-              <span className="transition-all duration-200">{label}</span>
+              <Icon size={17} className="shrink-0" />
+              <span className="truncate">{label}</span>
             </NavLink>
           ))}
         </nav>
 
         {/* Footer */}
-        <div className="space-y-0.5 border-t border-slate-200/70 p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:pb-2">
-          <button onClick={toggleLocale} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full">
+        <div className="space-y-1 border-t border-[var(--ui-border)] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:pb-2">
+          <button onClick={toggleLocale} className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-semibold text-[var(--ui-muted)] hover:bg-[var(--ui-panel-muted)] hover:text-[var(--ui-heading)]">
             <Languages size={16} />{locale === 'zh-CN' ? 'English' : '中文（简体）'}
           </button>
           {/* Quick actions */}
@@ -584,21 +583,21 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               <>
                 <button
                   onClick={() => handleSearchGo('/hermes')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] text-[11px] font-bold text-[var(--ui-accent)] transition-colors hover:bg-[var(--ui-panel-strong)]"
                   title="Hermes"
                 >
                   <Brain size={13} /><span>Hermes</span>
                 </button>
                 <button
                   onClick={() => window.open('https://hermes-agent.nousresearch.com/docs/', '_blank', 'noopener,noreferrer')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] text-[11px] font-bold text-[var(--ui-accent)] transition-colors hover:bg-[var(--ui-panel-strong)]"
                   title={locale === 'zh-CN' ? 'Hermes 文档' : 'Hermes Docs'}
                 >
                   <Search size={13} /><span>{locale === 'zh-CN' ? '文档' : 'Docs'}</span>
                 </button>
                 <button
                   onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 API2CN？页面将短暂断开。' : 'Restart API2CN? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] text-[11px] font-bold text-[var(--ui-accent)] transition-colors hover:bg-[var(--ui-panel-strong)]"
                   title={locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}
                 >
                   <Power size={13} /><span>{locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}</span>
@@ -639,14 +638,14 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
                       window.alert(locale === 'zh-CN' ? '重启网关失败' : 'Failed to restart gateway');
                     }
                   }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] text-[11px] font-bold text-[var(--ui-accent)] transition-colors hover:bg-[var(--ui-panel-strong)]"
                   title={locale === 'zh-CN' ? '重启网关' : 'Restart Gateway'}
                 >
                   <RefreshCw size={13} /><span>{locale === 'zh-CN' ? '重启网关' : 'Restart Gateway'}</span>
                 </button>
                 <button
                   onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 API2CN？页面将短暂断开。' : 'Restart API2CN? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] text-[11px] font-bold text-[var(--ui-accent)] transition-colors hover:bg-[var(--ui-panel-strong)]"
                   title={locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}
                 >
                   <Power size={13} /><span>{locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}</span>
@@ -659,19 +658,19 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
           </button>
         </div>
       </aside>
-      <main className="flex-1 flex flex-col overflow-hidden bg-transparent">
-          <header className="relative z-[160] hidden lg:flex items-center justify-between px-6 py-4 border-b border-slate-200/70 dark:border-slate-800/70 bg-[rgba(255,255,255,0.58)] dark:bg-[rgba(8,18,33,0.82)] backdrop-blur-xl">
+      <main className="flex flex-1 flex-col overflow-hidden bg-transparent">
+          <header className="relative z-[160] hidden items-center justify-between border-b border-[var(--ui-border)] bg-[var(--ui-panel)] px-6 py-3 lg:flex">
             <div className="flex items-center gap-3 min-w-0">
               <button onClick={() => setOpen(true)} className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white/90 text-slate-500 hover:text-slate-700 hover:bg-white transition-colors lg:hidden">
                 <Menu size={18} />
               </button>
               <div ref={searchRef} className="relative z-[120] hidden xl:flex flex-col min-w-[360px] max-w-[520px]">
-                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl ui-modern-panel">
-                <Search size={16} className="text-slate-400 dark:text-slate-500" />
+                <div className="flex items-center gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-4 py-2.5">
+                <Search size={16} className="text-[var(--ui-faint)]" />
                 <input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} onKeyDown={(e) => { if (e.key === 'Enter' && searchResults[0]) handleSearchGo(searchResults[0].path); if (e.key === 'Escape') setSearchOpen(false); }} placeholder={locale === 'zh-CN' ? '搜索页面、功能或通道...' : 'Search pages, features, or channels...'} className="w-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-500" />
                 </div>
                 {searchOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-3 rounded-[24px] border border-blue-100/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(239,246,255,0.92))] shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-xl overflow-hidden z-[140] dark:border-blue-800/30 dark:bg-[linear-gradient(145deg,rgba(12,24,42,0.98),rgba(30,64,175,0.16))]">
+                  <div className="absolute top-full left-0 right-0 mt-3 z-[140] overflow-hidden rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] shadow-[var(--ui-shadow-strong)]">
                     {searchResults.length === 0 ? <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">未找到匹配页面</div> : searchResults.map(item => (
                       <button key={item.path + item.label} onClick={() => handleSearchGo(item.path)} className="w-full text-left px-4 py-3 hover:bg-blue-50/70 dark:hover:bg-blue-900/20 transition-colors border-b last:border-b-0 border-blue-100/60 dark:border-slate-700/70">
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.label}</div>
@@ -683,13 +682,13 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               </div>
             </div>
             <div className="flex items-center gap-3">
-            <button onClick={toggleDark} className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white transition-colors inline-flex items-center justify-center">
+            <button onClick={toggleDark} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] text-[var(--ui-muted)] transition-colors hover:text-[var(--ui-heading)]">
                 {dark ? <Sun size={17} /> : <Moon size={17} />}
               </button>
               <MessageCenter tasks={tasks} taskLogs={taskLogs} onRefresh={loadTasks} mode="icon" />
               <div ref={profileRef} className="relative">
-                <button onClick={() => setProfileOpen(v => !v)} className="flex items-center gap-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 pl-2 pr-3 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                  <img src="/logo.jpg" alt="avatar" className="w-8 h-8 rounded-full object-cover" />
+                <button onClick={() => setProfileOpen(v => !v)} className="flex items-center gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] py-1.5 pl-2 pr-3 transition-colors hover:bg-[var(--ui-elevated)]">
+                  <img src="/logo.jpg" alt="avatar" className="h-8 w-8 rounded-md object-cover" />
                   <div className="text-left leading-tight">
                     <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">{activeAgent.name}</div>
                     <div className="text-[10px] text-slate-400 dark:text-slate-500">
@@ -752,13 +751,13 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               </div>
             </div>
           </header>
-        <header className="lg:hidden shrink-0 border-b border-blue-100/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(239,246,255,0.74))] px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-2xl dark:border-blue-400/15 dark:bg-[linear-gradient(180deg,rgba(7,17,31,0.94),rgba(11,26,46,0.88))]">
+        <header className="shrink-0 border-b border-[var(--ui-border)] bg-[var(--ui-panel)] px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
           <div className="flex items-center gap-2.5">
             <button onClick={() => setOpen(true)} className="page-modern-action h-11 w-11 rounded-2xl p-0">
               <Menu size={19} />
             </button>
-            <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-blue-100/70 bg-white/60 px-3 py-2.5 shadow-[0_14px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl dark:border-blue-400/15 dark:bg-slate-900/50">
-              <img src="/logo.jpg" alt="API2CN" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
+            <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-3 py-2.5 shadow-sm">
+              <img src="/logo.jpg" alt="API2CN" className="h-9 w-9 rounded-md object-cover shadow-sm" />
               <div className="min-w-0">
                 <div className="truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">API2CN</div>
                 <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">{isHermesBoard ? (locale === 'zh-CN' ? 'Hermes 板块' : 'Hermes Board') : (locale === 'zh-CN' ? '移动端控制台' : 'Mobile Console')}</div>
@@ -770,7 +769,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
             <MessageCenter tasks={tasks} taskLogs={taskLogs} onRefresh={loadTasks} mode="icon" />
           </div>
           <div ref={searchRef} className="relative mt-3">
-            <div className="flex items-center gap-3 rounded-2xl border border-blue-100/70 bg-white/64 px-4 py-3 shadow-[0_14px_32px_rgba(15,23,42,0.05)] backdrop-blur-xl dark:border-blue-400/15 dark:bg-slate-900/48">
+            <div className="flex items-center gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-4 py-3 shadow-sm">
               <Search size={16} className="text-slate-400 dark:text-slate-500" />
               <input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} onKeyDown={(e) => { if (e.key === 'Enter' && searchResults[0]) handleSearchGo(searchResults[0].path); if (e.key === 'Escape') setSearchOpen(false); }} placeholder={locale === 'zh-CN' ? '搜索页面、功能或通道...' : 'Search pages, features, or channels...'} className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500" />
             </div>
@@ -788,7 +787,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
         </header>
         {!isHermesBoard && openclawStatus?.configured && !runtime.healthy && (
           <div className="px-3 pt-3 sm:px-4 lg:px-6 xl:px-7">
-            <div className={`rounded-[24px] border px-4 py-3 shadow-[0_16px_34px_rgba(15,23,42,0.06)] backdrop-blur-xl ${runtime.state === 'offline' ? 'border-red-200/80 dark:border-red-900/40 bg-[linear-gradient(135deg,rgba(254,242,242,0.96),rgba(255,237,213,0.88))] dark:bg-[linear-gradient(135deg,rgba(127,29,29,0.24),rgba(120,53,15,0.18))]' : 'border-amber-200/80 dark:border-amber-900/40 bg-[linear-gradient(135deg,rgba(255,251,235,0.96),rgba(254,249,195,0.86))] dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.22),rgba(113,63,18,0.16))]'}`}>
+            <div className={`rounded-xl border px-4 py-3 shadow-[var(--ui-shadow)] ${runtime.state === 'offline' ? 'border-red-300/70 bg-red-50/90 dark:border-red-900/50 dark:bg-red-950/24' : 'border-amber-300/70 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/24'}`}>
               <div className="flex items-start gap-3">
                 <div className={`mt-0.5 rounded-2xl p-2 ${runtime.state === 'offline' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
                   <Bell size={16} />
@@ -803,20 +802,20 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
         )}
         <div className="ui-modern-content flex-1 overflow-y-auto ui-modern-scrollbar p-3 pb-24 sm:p-4 sm:pb-28 lg:p-6 lg:pb-6 xl:p-7"><Outlet context={outletContext} /></div>
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-blue-100/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(239,246,255,0.84))] px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl dark:border-blue-400/15 dark:bg-[linear-gradient(180deg,rgba(7,17,31,0.96),rgba(11,26,46,0.92))] lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--ui-border)] bg-[var(--ui-panel)] px-3 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2 lg:hidden">
         <div className={`grid gap-2 ${isHermesBoard ? 'grid-cols-5' : 'grid-cols-5'}`}>
           {mobileNavItems.map(({ to, icon: Icon, label }) => {
             const active = to === '/hermes'
               ? location.pathname === '/hermes'
               : location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
             return (
-              <button key={to} onClick={() => handleSearchGo(to)} className={`flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl border text-[11px] font-medium transition-all ${active ? 'border-blue-200/80 bg-[linear-gradient(135deg,rgba(59,130,246,0.18),rgba(14,165,233,0.12))] text-blue-700 shadow-[0_12px_24px_rgba(37,99,235,0.12)] dark:border-blue-400/20 dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.24),rgba(14,165,233,0.12))] dark:text-blue-100' : 'border-transparent bg-white/40 text-slate-500 dark:bg-slate-900/28 dark:text-slate-400'}`}>
+              <button key={to} onClick={() => handleSearchGo(to)} className={`flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-lg border text-[11px] font-bold transition-colors ${active ? 'border-[var(--ui-border-strong)] bg-[var(--ui-panel-strong)] text-[var(--ui-accent)] shadow-sm' : 'border-transparent bg-transparent text-[var(--ui-muted)]'}`}>
                 <Icon size={17} />
                 <span className="truncate px-1">{label}</span>
               </button>
             );
           })}
-          <button onClick={() => setOpen(true)} className="flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-2xl bg-white/40 text-[11px] font-medium text-slate-500 dark:bg-slate-900/28 dark:text-slate-400">
+          <button onClick={() => setOpen(true)} className="flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-lg bg-transparent text-[11px] font-bold text-[var(--ui-muted)]">
             <Menu size={17} />
             <span>{locale === 'zh-CN' ? '更多' : 'More'}</span>
           </button>

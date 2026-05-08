@@ -17,6 +17,7 @@ import (
 
 const fixedDefaultProviderBaseURL = "https://api.api2cn.com/v1"
 const fixedDefaultProviderRootURL = "https://api.api2cn.com"
+const fixedDefaultProviderBalanceURL = "http://127.0.0.1:8080/api/v1/public/balance"
 const fixedDefaultProviderUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36"
 
 // ModelHealthCheck 模型健康检查
@@ -212,11 +213,11 @@ func FetchKeyBalance(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		apiKey, err := readDefaultProviderAPIKey(cfg)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "读取 api2cn API Key 失败: " + err.Error()})
 			return
 		}
 
-		httpReq, err := http.NewRequest("GET", fixedDefaultProviderRootURL+"/api/v1/auth/me", nil)
+		httpReq, err := http.NewRequest("POST", fixedDefaultProviderBalanceURL, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": err.Error()})
 			return
@@ -227,29 +228,47 @@ func FetchKeyBalance(cfg *config.Config) gin.HandlerFunc {
 
 		resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(httpReq)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "请求 api2cn 余额接口失败: " + err.Error(), "target": fixedDefaultProviderBalanceURL})
 			return
 		}
 		defer resp.Body.Close()
 
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "status": resp.StatusCode, "error": extractModelAPIError(respBody)})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "status": resp.StatusCode, "error": "api2cn 余额接口返回异常: " + extractModelAPIError(respBody), "target": fixedDefaultProviderBalanceURL})
 			return
 		}
 
 		var data map[string]interface{}
 		if err := json.Unmarshal(respBody, &data); err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "余额响应格式错误"})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 余额响应格式错误"})
+			return
+		}
+
+		if code, ok := numericValue(data["code"]); ok && code != 0 {
+			msg, _ := data["message"].(string)
+			if msg == "" {
+				msg = "余额查询失败"
+			}
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 余额接口拒绝: " + msg})
 			return
 		}
 
 		balance, ok := extractBalanceValue(data)
 		if !ok {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "余额字段不存在"})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 余额响应缺少 balance/quota 字段"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"ok": true, "balance": balance})
+
+		result := gin.H{"ok": true, "balance": balance}
+		if payload, ok := data["data"].(map[string]interface{}); ok {
+			for _, key := range []string{"balance", "quota", "quota_used", "quota_remaining", "api_key_name", "api_key_status", "user_status", "expires_at"} {
+				if value, exists := payload[key]; exists {
+					result[key] = value
+				}
+			}
+		}
+		c.JSON(http.StatusOK, result)
 	}
 }
 
@@ -330,6 +349,22 @@ func valueAtPath(data map[string]interface{}, path []string) (interface{}, bool)
 		return v, true
 	default:
 		return nil, false
+	}
+}
+
+func numericValue(value interface{}) (float64, bool) {
+	switch v := value.(type) {
+	case float64:
+		return v, true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case json.Number:
+		n, err := v.Float64()
+		return n, err == nil
+	default:
+		return 0, false
 	}
 }
 

@@ -71,7 +71,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
   const [sessionActivity, setSessionActivity] = useState<SessionActivityItem[]>([]);
-  const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; error?: string }>({ loading: true });
+  const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; amount?: number; error?: string; detail?: string }>({ loading: true });
 
   useEffect(() => {
     api.getStatus().then(r => { if (r.ok) setStatus(r); });
@@ -103,8 +103,15 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       if (document.hidden) return;
       setKeyBalance(prev => ({ ...prev, loading: true }));
       api.getKeyBalance().then(r => {
-        if (r?.ok) setKeyBalance({ loading: false, value: formatBalanceValue(r.balance) });
-        else setKeyBalance({ loading: false, error: r?.error || '余额获取失败' });
+        if (r?.ok) {
+          const value = r.balance !== undefined ? r.balance : r.quota_remaining;
+          setKeyBalance({
+            loading: false,
+            value: formatBalanceValue(value),
+            amount: parseBalanceAmount(value),
+            detail: formatBalanceDetail(r),
+          });
+        } else setKeyBalance({ loading: false, error: r?.error || '余额获取失败' });
       }).catch((err: any) => setKeyBalance({ loading: false, error: err?.message || '余额获取失败' }));
     };
     loadKeyBalance();
@@ -238,8 +245,8 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
     <div className={`space-y-6 h-full flex flex-col ${modern ? 'p-0' : 'p-2'}`}>
       {/* OpenClaw not installed banner */}
       {status && !oc.configured && (
-        <div className="shrink-0 rounded-[28px] border border-amber-200/70 dark:border-amber-700/40 bg-[linear-gradient(135deg,rgba(255,251,235,0.82),rgba(219,234,254,0.56))] dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.22),rgba(30,64,175,0.18))] backdrop-blur-xl p-6 flex flex-col items-center gap-4 text-center shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-          <div className="w-14 h-14 rounded-2xl bg-white/70 dark:bg-slate-900/60 border border-white/70 dark:border-slate-700/60 flex items-center justify-center shadow-sm">
+        <div className="console-panel shrink-0 flex flex-col items-center gap-4 border-amber-300/70 bg-amber-50/90 p-6 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-amber-300/70 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-300">
             <Brain size={28} className="text-amber-600 dark:text-amber-400" />
           </div>
           <div>
@@ -260,22 +267,19 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       )}
 
       {/* Header */}
-      <div className={`shrink-0 flex items-center justify-between ${modern ? 'px-1' : ''}`}>
+      <div className={`page-modern-header shrink-0 ${modern ? '' : 'flex items-center justify-between'}`}>
         <div>
-          <h2 className={`font-bold tracking-tight ${modern ? 'text-2xl text-slate-900 dark:text-white' : 'text-xl text-gray-900 dark:text-white'}`}>{t.dashboard.title}</h2>
-          <p className={`text-sm mt-1 ${modern ? 'text-slate-500' : 'text-gray-500'}`}>{t.dashboard.subtitle}</p>
+          <h2 className={modern ? 'page-modern-title' : 'text-xl font-bold tracking-tight text-gray-900 dark:text-white'}>{t.dashboard.title}</h2>
+          <p className={modern ? 'page-modern-subtitle' : 'mt-1 text-sm text-gray-500'}>{t.dashboard.subtitle}</p>
         </div>
-        <div className={`flex items-center gap-2 ${modern ? `px-4 py-2 rounded-2xl border ${runtimeTone === 'emerald' ? 'border-emerald-200/60 dark:border-emerald-800/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.72),rgba(236,253,245,0.78))] dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.26),rgba(15,23,42,0.78))]' : runtimeTone === 'red' ? 'border-red-200/70 dark:border-red-800/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.72),rgba(254,242,242,0.85))] dark:bg-[linear-gradient(135deg,rgba(127,29,29,0.24),rgba(15,23,42,0.82))]' : 'border-amber-200/70 dark:border-amber-800/40 bg-[linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,251,235,0.86))] dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.24),rgba(15,23,42,0.82))]'} backdrop-blur-xl shadow-[0_14px_30px_rgba(15,23,42,0.05)]` : ''}`}>
-          <span className="flex h-2.5 w-2.5 relative">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${runtimeTone === 'emerald' ? 'bg-emerald-400' : runtimeTone === 'red' ? 'bg-red-400' : 'bg-amber-400'}`}></span>
-            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${runtimeTone === 'emerald' ? 'bg-emerald-500' : runtimeTone === 'red' ? 'bg-red-500' : 'bg-amber-500'}`}></span>
-          </span>
+        <div className={`flex items-center gap-2 rounded-lg border px-4 py-2 ${runtimeTone === 'emerald' ? 'border-emerald-300/60 bg-emerald-50/90 dark:border-emerald-900/50 dark:bg-emerald-950/20' : runtimeTone === 'red' ? 'border-red-300/70 bg-red-50/90 dark:border-red-900/50 dark:bg-red-950/20' : 'border-amber-300/70 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/20'}`}>
+          <span className={`h-2.5 w-2.5 rounded-full ${runtimeTone === 'emerald' ? 'bg-emerald-500' : runtimeTone === 'red' ? 'bg-red-500' : 'bg-amber-500'}`} />
           <span className={`text-xs font-medium ${runtimeTone === 'emerald' ? 'text-emerald-600 dark:text-emerald-400' : runtimeTone === 'red' ? 'text-red-600 dark:text-red-300' : 'text-amber-700 dark:text-amber-300'}`}>{runtime.healthy ? t.dashboard.systemNormal : runtime.title}</span>
         </div>
       </div>
 
       {oc.configured && !runtime.healthy && (
-        <div className={`shrink-0 rounded-[28px] border p-5 backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.06)] ${runtime.state === 'offline' ? 'border-red-200/80 dark:border-red-900/40 bg-[linear-gradient(135deg,rgba(254,242,242,0.96),rgba(255,237,213,0.88))] dark:bg-[linear-gradient(135deg,rgba(127,29,29,0.24),rgba(120,53,15,0.18))]' : 'border-amber-200/80 dark:border-amber-900/40 bg-[linear-gradient(135deg,rgba(255,251,235,0.95),rgba(254,249,195,0.82))] dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.22),rgba(113,63,18,0.16))]'}`}>
+        <div className={`shrink-0 rounded-xl border p-5 shadow-[var(--ui-shadow)] ${runtime.state === 'offline' ? 'border-red-300/70 bg-red-50/90 dark:border-red-900/50 dark:bg-red-950/20' : 'border-amber-300/70 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/20'}`}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-2xl p-2 ${runtime.state === 'offline' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>
               <AlertTriangle size={18} />
@@ -307,8 +311,8 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
           color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-900/20" modern={modern} />
         <StatCard icon={Cpu} label={t.dashboard.aiModel} value={oc.currentModel ? shortenModel(oc.currentModel) : t.dashboard.notSet}
           sub={oc.currentModel || ''} color="text-violet-600" bg="bg-violet-50 dark:bg-violet-900/20" modern={modern} />
-        <StatCard icon={Wallet} label="KEY 余额" value={keyBalance.loading ? '...' : (keyBalance.value || '--')}
-          sub={keyBalance.error || 'api2cn'} color={keyBalance.error ? 'text-amber-600' : 'text-emerald-600'} bg={keyBalance.error ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'} modern={modern} />
+        <StatCard icon={Wallet} label="API2CN 余额" value={keyBalance.loading ? '...' : (keyBalance.value || '--')}
+          sub={keyBalance.error || keyBalance.detail || 'api2cn'} color={keyBalance.error ? 'text-amber-600' : (keyBalance.amount !== undefined && keyBalance.amount < 20 ? 'text-red-600' : 'text-emerald-600')} bg={keyBalance.error ? 'bg-amber-50 dark:bg-amber-900/20' : (keyBalance.amount !== undefined && keyBalance.amount < 20 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20')} modern={modern} labelClassName="!text-[12px] !tracking-[0.12em]" valueClassName={keyBalance.error ? undefined : (keyBalance.amount !== undefined && keyBalance.amount < 20 ? '!text-red-600 dark:!text-red-400 !font-black' : '!text-emerald-600 dark:!text-emerald-400 !font-black')} />
         <StatCard icon={Clock} label={t.dashboard.uptime} value={formatUptime(adm.uptime || 0, t).split(/(\d+)/)[1]} unit={formatUptime(adm.uptime || 0, t).split(/(\d+)/)[2]}
           color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/20" modern={modern} />
         <StatCard icon={MemoryStick} label={t.dashboard.memory} value={`${adm.memoryMB || 0}`} unit="MB"
@@ -322,7 +326,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       </div>
 
       {oc.configured && (queuedTasks + runningTasks > 0 || taskIssues > 0 || taskFocusTitle) && (
-        <div className={`${modern ? 'rounded-[28px] border border-white/60 dark:border-slate-700/50 bg-[linear-gradient(145deg,rgba(255,255,255,0.84),rgba(248,250,252,0.7))] dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.92),rgba(51,65,85,0.22))] backdrop-blur-xl shadow-[0_22px_48px_rgba(15,23,42,0.06)]' : 'bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50'} p-5`}>
+        <div className={`${modern ? 'console-panel' : 'bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50'} p-5`}>
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-bold text-gray-900 dark:text-white">OpenClaw 后台任务</h3>
@@ -338,7 +342,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
             </button>
           </div>
           {taskFocusTitle && (
-            <div className="mt-4 rounded-2xl border border-slate-200/70 dark:border-slate-700/60 bg-white/70 dark:bg-slate-900/30 px-4 py-3">
+            <div className="mt-4 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-muted)] px-4 py-3">
               <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{taskFocusTitle}</div>
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{taskFocusDetail || '当前有后台任务活动，详细信息见任务账本。'}</div>
             </div>
@@ -349,10 +353,10 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       {/* Connected channel cards — only show connected */}
       {connectedChannels.length > 0 && (
         <div className="shrink-0">
-          <h3 className="text-sm font-semibold text-gray-500 mb-3 px-1">{t.dashboard.connectedChannels}</h3>
-          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}>
+          <h3 className="mb-3 px-1 text-xs font-black uppercase tracking-[0.18em] text-[var(--ui-faint)]">{t.dashboard.connectedChannels}</h3>
+          <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3`}>
             {connectedChannels.map(ch => (
-              <div key={ch.name} className={`${modern ? 'relative overflow-hidden rounded-3xl p-5 border border-white/60 dark:border-slate-700/50 bg-[linear-gradient(145deg,rgba(255,255,255,0.82),rgba(239,246,255,0.66))] dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.86),rgba(15,118,110,0.14))] backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.06)]' : 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50'} hover:shadow-md transition-shadow`}>
+              <div key={ch.name} className={`${modern ? 'console-panel p-4' : 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50'} transition-shadow hover:shadow-md`}>
                 {modern && <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent dark:via-slate-200/20" />}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -378,10 +382,10 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       )}
 
       {/* Recent activity */}
-      <div className={`${modern ? 'rounded-[28px] border border-white/60 dark:border-slate-700/50 bg-[linear-gradient(145deg,rgba(255,255,255,0.84),rgba(239,246,255,0.62))] dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.9),rgba(30,64,175,0.12))] backdrop-blur-xl shadow-[0_22px_48px_rgba(15,23,42,0.06)]' : 'bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700/50'} flex-1 flex flex-col min-h-0 overflow-hidden`}>
-        <div className={`flex items-center justify-between px-5 py-4 shrink-0 ${modern ? 'border-b border-slate-200/60 dark:border-slate-700/50 bg-white/30 dark:bg-slate-900/20 backdrop-blur-xl' : 'border-b border-gray-50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-800/50'}`}>
+      <div className={`${modern ? 'console-table' : 'bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700/50'} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+        <div className={`flex shrink-0 items-center justify-between px-5 py-4 ${modern ? 'border-b border-[var(--ui-border)] bg-[var(--ui-panel-muted)]' : 'border-b border-gray-50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-800/50'}`}>
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-xl border border-blue-100/80 dark:border-blue-800/40 bg-blue-50/80 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 shadow-sm">
+            <div className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-accent-soft)] p-1.5 text-[var(--ui-accent)] shadow-sm">
               <Activity size={16} />
             </div>
             <div>
@@ -451,27 +455,43 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
 }
 
 function formatBalanceValue(value: any) {
-  if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  const numeric = parseBalanceAmount(value);
+  if (numeric !== undefined) return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const text = String(value ?? '').trim();
-  const numeric = Number(text);
-  if (text !== '' && Number.isFinite(numeric)) return numeric.toLocaleString(undefined, { maximumFractionDigits: 4 });
   return text || '--';
 }
 
-function StatCard({ icon: Icon, label, value, unit, color, bg, sub, modern }: { icon: any; label: string; value: string; unit?: string; color: string; bg: string; sub?: string; modern?: boolean }) {
+function parseBalanceAmount(value: any) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const text = String(value ?? '').trim();
+  if (!text) return undefined;
+  const numeric = Number(text);
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function formatBalanceDetail(data: any) {
+  const parts: string[] = [];
+  if (data?.quota !== undefined && data?.quota_used !== undefined) {
+    parts.push(`${formatBalanceValue(data.quota_used)}/${formatBalanceValue(data.quota)} 已用`);
+  }
+  if (data?.api_key_status) parts.push(`key ${data.api_key_status}`);
+  return parts.join(' · ') || 'api2cn';
+}
+
+function StatCard({ icon: Icon, label, value, unit, color, bg, sub, modern, labelClassName = '', valueClassName = '' }: { icon: any; label: string; value: string; unit?: string; color: string; bg: string; sub?: string; modern?: boolean; labelClassName?: string; valueClassName?: string }) {
   return (
-    <div className={`${modern ? 'relative overflow-hidden rounded-[26px] p-5 h-[132px] border border-white/65 dark:border-slate-700/55 bg-[linear-gradient(145deg,rgba(255,255,255,0.84),rgba(239,246,255,0.62))] dark:bg-[linear-gradient(145deg,rgba(15,23,42,0.88),rgba(30,64,175,0.12))] backdrop-blur-xl shadow-[0_18px_40px_rgba(15,23,42,0.06)]' : 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 h-24'} flex flex-col justify-between hover:shadow-md transition-shadow group`}>
-      {modern && <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/95 to-transparent dark:via-slate-200/20" />}
+    <div className={`${modern ? 'console-kpi relative h-[132px] overflow-hidden p-5 pl-6' : 'bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 h-24'} group flex flex-col justify-between transition-shadow hover:shadow-md`}>
+      {modern && <div className="pointer-events-none absolute inset-y-4 left-0 w-1 rounded-r-full bg-[var(--ui-accent)] opacity-70" />}
       <div className="flex items-start justify-between">
-        <div className={`p-2 rounded-xl border border-white/70 dark:border-slate-700/60 ${bg} ${color} transition-transform group-hover:scale-105 shadow-sm`}>
+        <div className={`rounded-lg border border-[var(--ui-border)] p-2 ${bg} ${color} shadow-sm`}>
           <Icon size={18} />
         </div>
-        {sub && <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full max-w-[124px] truncate border ${modern ? 'bg-white/75 text-slate-500 border-white/75 dark:bg-slate-900/50 dark:border-slate-700/60' : 'bg-gray-50 dark:bg-gray-700 text-gray-500'}`}>{sub}</span>}
+        {sub && <span className={`max-w-[124px] truncate rounded-md border px-2.5 py-1 text-[10px] font-bold ${modern ? 'border-[var(--ui-border)] bg-[var(--ui-panel-muted)] text-[var(--ui-muted)]' : 'bg-gray-50 dark:bg-gray-700 text-gray-500'}`}>{sub}</span>}
       </div>
       <div>
-        <p className={`text-[10px] font-medium uppercase tracking-wider mb-0.5 ${modern ? 'text-slate-400' : 'text-gray-400'}`}>{label}</p>
+        <p className={`mb-0.5 text-[10px] font-black uppercase tracking-[0.16em] ${modern ? 'text-[var(--ui-faint)]' : 'text-gray-400'} ${labelClassName}`}>{label}</p>
         <div className="flex items-baseline gap-1">
-          <span className={`${modern ? 'text-[28px] leading-none' : 'text-lg'} font-bold text-gray-900 dark:text-white tracking-tight`}>{value}</span>
+          <span className={`${modern ? 'text-[28px] leading-none' : 'text-lg'} font-bold text-gray-900 dark:text-white tracking-tight ${valueClassName}`}>{value}</span>
           {unit && <span className={`font-medium ${modern ? 'text-xs text-slate-400' : 'text-[10px] text-gray-400'}`}>{unit}</span>}
         </div>
       </div>
