@@ -45,7 +45,7 @@ const zhCN: Translations = {
   },
 
   login: {
-    title: 'ClawPanel',
+    title: 'API2CN',
     subtitle: 'OpenClaw 管理面板',
     passwordLabel: '管理密码',
     passwordPlaceholder: '请输入面板密码',
@@ -458,7 +458,7 @@ const zhCN: Translations = {
     softwareVersions: '软件版本',
     runtimeInfo: '运行时信息',
     changePassword: '修改管理密码',
-    changePasswordDesc: '修改 ClawPanel 管理后台登录密码，修改后需重新登录',
+    changePasswordDesc: '修改 API2CN 管理后台登录密码，修改后需重新登录',
     currentPassword: '当前密码',
     newPassword: '新密码',
     confirmPassword: '确认新密码',

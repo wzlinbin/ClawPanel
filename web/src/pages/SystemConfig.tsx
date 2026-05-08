@@ -11,6 +11,12 @@ import {
 import InfoTooltip from '../components/InfoTooltip';
 import { useI18n } from '../i18n';
 
+const FIXED_DEFAULT_PROVIDER_ID = 'api2cn';
+const FIXED_DEFAULT_PROVIDER_BASE_URL = 'https://api.api2cn.com/v1';
+const FIXED_DEFAULT_PROVIDER_HEADERS: Record<string, string> = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36',
+};
+
 const KNOWN_PROVIDERS: { id: string; name: string; nameZh?: string; baseUrl: string; apiType?: string; apiKeyUrl: string; models: string[]; category: 'cn' | 'intl' | 'agg' }[] = [
   // === 国内主流 ===
   { id: 'volcengine', name: 'Volcengine Ark', nameZh: '火山方舟（字节）', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', apiKeyUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey', models: ['doubao-pro-256k', 'doubao-lite-128k', 'deepseek-v3', 'deepseek-r1'], category: 'cn' },
@@ -371,6 +377,8 @@ export default function SystemConfig() {
   const [workspacePathLoading, setWorkspacePathLoading] = useState(false);
   const [workspacePathSaving, setWorkspacePathSaving] = useState(false);
   const [providerIdDrafts, setProviderIdDrafts] = useState<Record<string, string>>({});
+  const [modelListLoading, setModelListLoading] = useState<Record<string, boolean>>({});
+  const [modelListResults, setModelListResults] = useState<Record<string, { ok?: boolean; error?: string; count?: number }>>({});
 
   const providers = config?.models?.providers || {};
   const providerIds = Object.keys(providers);
@@ -410,13 +418,39 @@ export default function SystemConfig() {
     try {
       const r = await api.getOpenClawConfig();
       if (r.ok) {
-        const next = r.config || {};
+        const next = normalizeDefaultProviderId(r.config || {});
         setConfig(next);
         setOriginConfig(cloneConfig(next));
         setProviderIdDrafts({});
       }
     }
     catch {} finally { setLoading(false); }
+  };
+
+  const normalizeDefaultProviderId = (input: any) => {
+    const clone = cloneConfig(input || {});
+    const currentProviders = clone?.models?.providers;
+    if (!currentProviders || typeof currentProviders !== 'object' || Array.isArray(currentProviders)) return clone;
+    if (currentProviders[FIXED_DEFAULT_PROVIDER_ID]) return clone;
+    const legacyId = Object.keys(currentProviders).find(pid => pid.startsWith('provider-') && currentProviders[pid]?.baseUrl === FIXED_DEFAULT_PROVIDER_BASE_URL);
+    if (!legacyId) return clone;
+
+    currentProviders[FIXED_DEFAULT_PROVIDER_ID] = currentProviders[legacyId];
+    delete currentProviders[legacyId];
+
+    const currentPrimaryRaw = clone?.agents?.defaults?.model;
+    const currentPrimary = typeof currentPrimaryRaw === 'string'
+      ? currentPrimaryRaw
+      : (currentPrimaryRaw?.primary || '');
+    if (currentPrimary.startsWith(legacyId + '/')) {
+      if (!clone.agents) clone.agents = {};
+      if (!clone.agents.defaults || typeof clone.agents.defaults !== 'object') clone.agents.defaults = {};
+      const defaults = clone.agents.defaults;
+      const nextPrimary = FIXED_DEFAULT_PROVIDER_ID + currentPrimary.slice(legacyId.length);
+      if (typeof defaults.model === 'string') defaults.model = nextPrimary;
+      else defaults.model = { ...(defaults.model && typeof defaults.model === 'object' ? defaults.model : {}), primary: nextPrimary };
+    }
+    return clone;
   };
 
   const loadWorkspacePathFn = async () => {
@@ -563,6 +597,37 @@ export default function SystemConfig() {
       cur[keys[keys.length - 1]] = value;
     });
   };
+
+  const fetchProviderModels = async (pid: string, prov: any) => {
+    const apiKey = String(prov?.apiKey || '').trim();
+    if (!apiKey) {
+      setModelListResults(prev => ({ ...prev, [pid]: { ok: false, error: '请先填写 API Key' } }));
+      return;
+    }
+    setModelListLoading(prev => ({ ...prev, [pid]: true }));
+    setModelListResults(prev => ({ ...prev, [pid]: {} }));
+    try {
+      const r = await api.fetchModelList(FIXED_DEFAULT_PROVIDER_BASE_URL, apiKey);
+      if (!r.ok) {
+        setModelListResults(prev => ({ ...prev, [pid]: { ok: false, error: r.error || '获取模型列表失败' } }));
+        return;
+      }
+      const models: string[] = Array.from(new Set<string>((r.models || []).map((m: any) => String(m || '').trim()).filter(Boolean)));
+      updateConfig((clone: any) => {
+        const provider = clone.models.providers[pid];
+        provider.baseUrl = FIXED_DEFAULT_PROVIDER_BASE_URL;
+        provider.headers = { ...FIXED_DEFAULT_PROVIDER_HEADERS };
+        provider.models = models.map((id: string) => ({ id, name: id, contextWindow: 128000, maxTokens: 8192 }));
+      });
+      setExpandedModel(null);
+      setModelListResults(prev => ({ ...prev, [pid]: { ok: true, count: models.length } }));
+    } catch (err: any) {
+      setModelListResults(prev => ({ ...prev, [pid]: { ok: false, error: err?.message || '获取模型列表失败' } }));
+    } finally {
+      setModelListLoading(prev => ({ ...prev, [pid]: false }));
+    }
+  };
+
   const currentWebSearchProvider = String(getVal('tools.web.search.provider') || '').trim();
   const webSearchProviderMeta = WEB_SEARCH_PROVIDER_CONFIG[currentWebSearchProvider] || null;
   const agentDefaultsFields: CfgField[] = [
@@ -622,6 +687,12 @@ export default function SystemConfig() {
     const clone = cloneConfig(input || {});
     const currentProviders = clone?.models?.providers;
     if (currentProviders && typeof currentProviders === 'object' && !Array.isArray(currentProviders)) {
+      Object.values(currentProviders).forEach((provider: any) => {
+        if (!provider || typeof provider !== 'object' || Array.isArray(provider)) return;
+        provider.baseUrl = FIXED_DEFAULT_PROVIDER_BASE_URL;
+        provider.headers = { ...FIXED_DEFAULT_PROVIDER_HEADERS };
+        if (!provider.api) provider.api = 'openai-completions';
+      });
       const currentIds = Object.keys(currentProviders);
       if (currentIds.length > 0) {
         const renamedProviders: Record<string, any> = {};
@@ -945,10 +1016,7 @@ export default function SystemConfig() {
         {([
           { id: 'models' as ConfigTab, label: i18n.sysConfig.tabModels, icon: Brain },
           { id: 'identity' as ConfigTab, label: i18n.sysConfig.tabIdentity, icon: Users },
-          { id: 'general' as ConfigTab, label: i18n.sysConfig.tabGeneral, icon: Terminal },
           { id: 'version' as ConfigTab, label: i18n.sysConfig.tabVersion, icon: Package },
-          { id: 'env' as ConfigTab, label: i18n.sysConfig.tabEnv, icon: Monitor },
-          { id: 'health' as ConfigTab, label: '配置检测', icon: Shield },
         ]).map(tb => (
           <button key={tb.id} onClick={() => setTab(tb.id)}
             className={`${modern ? 'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium border transition-all whitespace-nowrap' : 'flex items-center gap-2 pb-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap'} ${tab === tb.id ? (modern ? 'border-blue-100/80 bg-blue-50/85 dark:bg-blue-900/20 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 shadow-sm' : 'border-violet-600 text-violet-700 dark:text-violet-400') : (modern ? 'border-transparent text-gray-500 hover:bg-white/70 dark:hover:bg-slate-800/70 hover:text-gray-700 dark:hover:text-gray-300' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300')}`}>
@@ -1013,56 +1081,16 @@ export default function SystemConfig() {
             )}
           </div>
 
-          {/* Quick add provider from presets */}
-          <div className={`${modern ? 'page-modern-panel p-5 space-y-3' : 'bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5 space-y-3'}`}>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Plus size={16} className="text-blue-500" /> 快速添加模型服务商
-            </h3>
-            <p className="text-xs text-gray-500">点击服务商名称一键添加，填入 API Key 即可使用</p>
-            <div className="space-y-2">
-              {[
-                { label: '国内主流', cat: 'cn' as const, color: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-800/30 hover:bg-red-100 dark:hover:bg-red-900/40' },
-                { label: '国际主流', cat: 'intl' as const, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-900/40' },
-                { label: '聚合平台', cat: 'agg' as const, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/30 hover:bg-amber-100 dark:hover:bg-amber-900/40' },
-              ].map(({ label, cat, color }) => (
-                <div key={cat} className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider w-12 shrink-0">{label}</span>
-                  {KNOWN_PROVIDERS.filter(kp => kp.category === cat).map(kp => {
-                    const alreadyAdded = Object.keys(providers).includes(kp.id);
-                    return (
-                      <button key={kp.id} disabled={alreadyAdded} onClick={() => {
-                        updateConfig((clone: any) => {
-                        if (!clone.models) clone.models = {};
-                        if (!clone.models.providers) clone.models.providers = {};
-                        clone.models.providers[kp.id] = {
-                          baseUrl: kp.baseUrl,
-                          apiKey: '',
-                          api: kp.apiType || 'openai-completions',
-                          models: [createEmptyProviderModel()],
-                        };
-                        });
-                      }} className={`px-2 py-0.5 text-[10px] font-medium rounded-md border transition-colors ${alreadyAdded ? 'opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700' : color}`}
-                        title={alreadyAdded ? '已添加' : `点击添加 ${kp.nameZh || kp.name}`}>
-                        {kp.nameZh || kp.name}{alreadyAdded ? ' ✓' : ''}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{i18n.sysConfig.modelProviders} ({Object.keys(providers).length})</h3>
               <button onClick={() => {
-                const id = `provider-${Date.now()}`;
                 updateConfig((clone: any) => {
                   if (!clone.models) clone.models = {};
                   if (!clone.models.providers) clone.models.providers = {};
-                  clone.models.providers[id] = { baseUrl: '', apiKey: '', api: 'openai-completions', models: [createEmptyProviderModel()] };
+                  clone.models.providers[FIXED_DEFAULT_PROVIDER_ID] = { baseUrl: FIXED_DEFAULT_PROVIDER_BASE_URL, apiKey: '', api: 'openai-completions', headers: { ...FIXED_DEFAULT_PROVIDER_HEADERS }, models: [createEmptyProviderModel()] };
                 });
-              }} className={`${modern ? 'page-modern-action px-3 py-1.5 text-xs font-medium' : 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors'}`}>
+              }} disabled={!!providers[FIXED_DEFAULT_PROVIDER_ID]} className={`${modern ? 'page-modern-action px-3 py-1.5 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed' : 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'}`}>
                 <Plus size={14} />{i18n.sysConfig.addProvider}
               </button>
             </div>
@@ -1097,14 +1125,14 @@ export default function SystemConfig() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Base URL</label>
-                      <input value={prov.baseUrl || ''} onChange={e => setVal(`models.providers.${pid}.baseUrl`, e.target.value)}
-                        placeholder="https://api.openai.com/v1" className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono" />
+                      <input value={FIXED_DEFAULT_PROVIDER_BASE_URL} readOnly
+                        className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono" />
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">API Key</label>
                         {(() => {
-                          const matched = KNOWN_PROVIDERS.find(kp => prov.baseUrl?.includes(kp.baseUrl.replace('https://', '').split('/')[0]));
+                          const matched = KNOWN_PROVIDERS.find(kp => FIXED_DEFAULT_PROVIDER_BASE_URL.includes(kp.baseUrl.replace('https://', '').split('/')[0]));
                           return matched ? (
                             <a href={matched.apiKeyUrl} target="_blank" rel="noopener noreferrer"
                               className="text-[10px] text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 hover:underline">
@@ -1146,39 +1174,16 @@ export default function SystemConfig() {
                     <div className="col-span-2">
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">自定义请求头 (Custom Headers)</label>
                       <div className="space-y-2">
-                        {Object.entries(prov.headers || {}).map(([hk, hv]) => (
+                        {Object.entries(FIXED_DEFAULT_PROVIDER_HEADERS).map(([hk, hv]) => (
                           <div key={hk} className="flex gap-2 items-center">
                             <input value={hk} readOnly className="w-1/3 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" />
-                            <input value={String(hv)} onChange={e => {
-                              updateConfig((clone: any) => {
-                                if (!clone.models.providers[pid].headers) clone.models.providers[pid].headers = {};
-                                clone.models.providers[pid].headers[hk] = e.target.value;
-                              });
-                            }} className="flex-1 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
-                            <button onClick={() => {
-                              updateConfig((clone: any) => {
-                                if (clone.models.providers[pid].headers) {
-                                  delete clone.models.providers[pid].headers[hk];
-                                  if (Object.keys(clone.models.providers[pid].headers).length === 0) delete clone.models.providers[pid].headers;
-                                }
-                              });
-                            }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                            <input value={String(hv)} readOnly className="flex-1 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" />
                           </div>
                         ))}
-                        <button onClick={() => {
-                          const key = prompt('Header name (e.g. X-Custom-Header):');
-                          if (!key?.trim()) return;
-                          updateConfig((clone: any) => {
-                            if (!clone.models.providers[pid].headers) clone.models.providers[pid].headers = {};
-                            clone.models.providers[pid].headers[key.trim()] = '';
-                          });
-                        }} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 border-dashed hover:border-solid transition-all flex items-center gap-1.5">
-                          <Plus size={12} /> 添加请求头
-                        </button>
                       </div>
                     </div>
                   </div>
-                  <ProviderHealthCheck pid={pid} prov={prov} />
+                  <ProviderModelListFetch pid={pid} prov={prov} loading={!!modelListLoading[pid]} result={modelListResults[pid]} onFetch={() => fetchProviderModels(pid, prov)} />
 
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">模型列表</label>
@@ -1403,7 +1408,7 @@ export default function SystemConfig() {
                         }} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 border-dashed hover:border-solid transition-all flex items-center gap-1.5">
                           <Plus size={12} /> 自定义模型
                         </button>
-                        {KNOWN_PROVIDERS.filter(kp => prov.baseUrl?.includes(kp.baseUrl.replace('https://', '').split('/')[0])).flatMap(kp =>
+                        {KNOWN_PROVIDERS.filter(kp => FIXED_DEFAULT_PROVIDER_BASE_URL.includes(kp.baseUrl.replace('https://', '').split('/')[0])).flatMap(kp =>
                           kp.models.filter(m => !(prov.models || []).find((pm: any) => (typeof pm === 'string' ? pm : pm.id) === m)).slice(0, 4).map(m => (
                             <button key={m} onClick={() => {
                               updateConfig((clone: any) => {
@@ -1681,7 +1686,7 @@ export default function SystemConfig() {
                 <HardDrive size={16} />
               </div>
               <h3 className="text-sm font-bold text-gray-900 dark:text-white">工作区路径</h3>
-              <InfoTooltip content="ClawPanel 配置中的 OpenClaw 工作区路径（openClawWork），用于指定 Agent 工作目录和文件存储位置。修改后需重启网关生效。" />
+              <InfoTooltip content="API2CN 配置中的 OpenClaw 工作区路径（openClawWork），用于指定 Agent 工作目录和文件存储位置。修改后需重启网关生效。" />
             </div>
             <div className="flex items-center gap-3">
               <input
@@ -1990,9 +1995,6 @@ export default function SystemConfig() {
 
             <UpdateSection versionInfo={versionInfo} updating={updating} setUpdating={setUpdating} updateStatus={updateStatus} setUpdateStatus={setUpdateStatus} updateLog={updateLog} setUpdateLog={setUpdateLog} checking={checking} setChecking={setChecking} setVersionInfo={setVersionInfo} setMsg={setMsg} loadVersion={loadVersion} />
           </div>
-
-          {/* ClawPanel 面板自检更新 */}
-          <PanelUpdateSection />
 
           <div className={`${modern ? 'page-modern-panel p-6 space-y-4' : 'bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-6 space-y-4'}`}>
             <div className="flex items-center justify-between">
@@ -2395,7 +2397,7 @@ function ChangePasswordSection({ embedded = false }: { embedded?: boolean }) {
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">{t.sysConfig?.changePassword || '修改管理密码'}</h3>
-            <p className="text-[10px] text-gray-500 mt-0.5">{t.sysConfig?.changePasswordDesc || '修改 ClawPanel 管理后台登录密码，修改后需重新登录'}</p>
+            <p className="text-[10px] text-gray-500 mt-0.5">{t.sysConfig?.changePasswordDesc || '修改 API2CN 管理后台登录密码，修改后需重新登录'}</p>
           </div>
         </div>
         {body}
@@ -2411,7 +2413,7 @@ function ChangePasswordSection({ embedded = false }: { embedded?: boolean }) {
         </div>
         <div>
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">{t.sysConfig?.changePassword || '修改管理密码'}</h3>
-          <p className="text-[10px] text-gray-500 mt-0.5">{t.sysConfig?.changePasswordDesc || '修改 ClawPanel 管理后台登录密码，修改后需重新登录'}</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">{t.sysConfig?.changePasswordDesc || '修改 API2CN 管理后台登录密码，修改后需重新登录'}</p>
         </div>
       </div>
       <div className="p-5">
@@ -2493,7 +2495,7 @@ function PanelUpdateSection() {
   return (
     <div className="page-modern-panel p-6 space-y-5">
       <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-        <Box size={16} className="text-blue-500" /> ClawPanel 版本更新
+        <Box size={16} className="text-blue-500" /> API2CN 版本更新
         <span className="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-900 px-2 py-0.5 rounded ml-1">{panelVersion || '...'}</span>
         <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">标准版</span>
         <span className="text-[10px] text-gray-400 ml-auto">🛡️ 独立更新工具</span>
@@ -2714,37 +2716,21 @@ function UpdateSection({ versionInfo, updating, setUpdating, updateStatus, setUp
   );
 }
 
-function ProviderHealthCheck({ pid, prov }: { pid: string; prov: any }) {
-  const [checking, setChecking] = useState(false);
-  const [result, setResult] = useState<{ healthy?: boolean; error?: string } | null>(null);
-
-  const check = async () => {
-    if (!prov.baseUrl || !prov.apiKey) { setResult({ healthy: false, error: '请先填写 Base URL 和 API Key' }); return; }
-    setChecking(true); setResult(null);
-    try {
-      const firstModel = (prov.models || [])[0];
-      const modelId = typeof firstModel === 'string' ? firstModel : firstModel?.id;
-      const r = await api.checkModelHealth(prov.baseUrl, prov.apiKey, prov.api || 'openai-completions', modelId);
-      setResult(r);
-    } catch (err: any) {
-      setResult({ healthy: false, error: err.message || '检测失败' });
-    } finally { setChecking(false); }
-  };
-
+function ProviderModelListFetch({ loading, result, onFetch }: { pid: string; prov: any; loading: boolean; result?: { ok?: boolean; error?: string; count?: number }; onFetch: () => void }) {
   return (
     <div className="flex items-center gap-3 pt-1">
-      <button onClick={check} disabled={checking}
+      <button onClick={onFetch} disabled={loading}
         className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-medium rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors disabled:opacity-50">
-        {checking ? <RefreshCw size={12} className="animate-spin" /> : <CheckCircle size={12} />}
-        {checking ? '检测中...' : '检测连通性'}
+        {loading ? <RefreshCw size={12} className="animate-spin" /> : <Search size={12} />}
+        {loading ? '获取中...' : '获取模型列表'}
       </button>
-      {result && (
+      {result && result.ok !== undefined && (
         <span className={`flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-full border ${
-          result.healthy
+          result.ok
             ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-100 dark:border-emerald-800/30'
             : 'bg-red-50 dark:bg-red-900/20 text-red-600 border-red-100 dark:border-red-800/30'
         }`}>
-          {result.healthy ? <><CheckCircle size={10} /> 可用</> : <><AlertTriangle size={10} /> {result.error || '不可用'}</>}
+          {result.ok ? <><CheckCircle size={10} /> 已获取 {result.count || 0} 个模型</> : <><AlertTriangle size={10} /> {result.error || '获取失败'}</>}
         </span>
       )}
     </div>

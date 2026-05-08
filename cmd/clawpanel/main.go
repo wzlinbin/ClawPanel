@@ -329,6 +329,8 @@ func runServer(stopCh chan struct{}) {
 
 			// 模型健康检查
 			auth.POST("/system/model-health", handler.ModelHealthCheck())
+			auth.POST("/system/model-list", handler.FetchModelList())
+			auth.GET("/system/key-balance", handler.FetchKeyBalance(cfg))
 
 			// AI 助手
 			auth.POST("/system/ai-chat", handler.AIChat(cfg))

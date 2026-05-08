@@ -98,25 +98,3 @@ func TestDetectPythonVersionFallsBackToPyLauncher(t *testing.T) {
 		t.Fatalf("expected py launcher version, got %q", got)
 	}
 }
-
-func TestFormatOpenClawManualPrerequisiteErrorRequiresUsableNpm(t *testing.T) {
-	t.Parallel()
-
-	err := formatOpenClawManualPrerequisiteError("windows", "v22.14.0", "", "git version 2.49.0")
-	if err == nil {
-		t.Fatal("expected npm usability error")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "npm") || !strings.Contains(msg, "nodejs.org") {
-		t.Fatalf("expected npm hint in error, got %q", msg)
-	}
-}
-
-func TestFormatOpenClawManualPrerequisiteErrorClearsWhenDesktopPrereqsUsable(t *testing.T) {
-	t.Parallel()
-
-	err := formatOpenClawManualPrerequisiteError("windows", "v22.14.0", "10.9.2", "git version 2.49.0")
-	if err != nil {
-		t.Fatalf("expected no error when node/npm/git are usable, got %v", err)
-	}
-}

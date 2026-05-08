@@ -133,7 +133,7 @@ function PanelSettingsModal({ open, onClose, onLogout, locale }: { open: boolean
               {locale === 'zh-CN' ? '管理面板登录与本地设置' : 'Panel login and local settings'}
             </h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {locale === 'zh-CN' ? '这里只放与 ClawPanel 面板自身相关的配置，不影响 OpenClaw 或 Hermes 平台参数。' : 'This dialog only contains ClawPanel-specific settings, separate from OpenClaw and Hermes.'}
+              {locale === 'zh-CN' ? '这里只放与 API2CN 面板自身相关的配置，不影响 OpenClaw 或 Hermes 平台参数。' : 'This dialog only contains API2CN-specific settings, separate from OpenClaw and Hermes.'}
             </p>
           </div>
           <button onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white/70 text-slate-500 transition-colors hover:text-slate-800 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-400 dark:hover:text-white">
@@ -267,8 +267,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { to: '/company', icon: BriefcaseBusiness, label: locale === 'zh-CN' ? 'AI公司' : 'AI Company' },
     { to: '/cron', icon: Clock, label: t.nav.cronJobs },
     { to: '/tasks', icon: Activity, label: locale === 'zh-CN' ? '后台任务' : 'Tasks' },
-    { to: '/sessions', icon: MessageSquare, label: '会话管理' },
-    { to: '/workspace', icon: FolderOpen, label: t.nav.workspace },
     { to: '/config', icon: Settings, label: t.nav.systemConfig },
   ], [enableAgents, locale, t]);
 
@@ -420,8 +418,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { label: locale === 'zh-CN' ? 'AI公司' : 'AI Company', keywords: ['company', 'ai company', '协作任务', '任务中心', '团队'], path: '/company' },
     { label: '定时任务', keywords: ['cron', 'jobs', '定时任务'], path: '/cron' },
     { label: locale === 'zh-CN' ? '后台任务' : 'Background Tasks', keywords: ['tasks', 'background tasks', '任务账本', '后台任务'], path: '/tasks' },
-    { label: '会话管理', keywords: ['session', 'sessions', '会话'], path: '/sessions' },
-    { label: '工作区', keywords: ['workspace', '工作区', '文件'], path: '/workspace' },
     { label: '系统配置', keywords: ['config', 'settings', '系统配置'], path: '/config' },
   ], [enableAgents, locale]);
 
@@ -531,10 +527,10 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
         <div className="px-4 py-4 border-b border-slate-200/70">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-2xl border border-slate-200/70 bg-white/90 shadow-[0_10px_24px_rgba(15,23,42,0.06)] dark:border-slate-700/70 dark:bg-slate-900/90">
-              <img src="/logo.jpg" alt="ClawPanel" className="w-8 h-8 rounded-xl object-cover" />
+              <img src="/logo.jpg" alt="API2CN" className="w-8 h-8 rounded-xl object-cover" />
             </div>
             <div>
-              <h1 className="font-bold text-sm tracking-tight text-gray-900 dark:text-white">ClawPanel</h1>
+              <h1 className="font-bold text-sm tracking-tight text-gray-900 dark:text-white">API2CN</h1>
               <p className="text-[10px] font-medium -mt-0.5 text-slate-500">{activeAgent.name} · {activeAgent.subtitle}</p>
             </div>
           </div>
@@ -601,11 +597,11 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
                   <Search size={13} /><span>{locale === 'zh-CN' ? '文档' : 'Docs'}</span>
                 </button>
                 <button
-                  onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 ClawPanel？页面将短暂断开。' : 'Restart ClawPanel? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
+                  onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 API2CN？页面将短暂断开。' : 'Restart API2CN? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                   title={locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}
                 >
-                  <Power size={13} /><span>{locale === 'zh-CN' ? '面板' : 'Panel'}</span>
+                  <Power size={13} /><span>{locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}</span>
                 </button>
               </>
             ) : (
@@ -632,7 +628,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
                   }`}
                   title={openClawRestartHint || (locale === 'zh-CN' ? '重启 OpenClaw' : 'Restart OpenClaw')}
                 >
-                  <RotateCw size={13} /><span>OpenClaw</span>
+                  <RotateCw size={13} /><span>{locale === 'zh-CN' ? '重启 OpenClaw' : 'Restart OpenClaw'}</span>
                 </button>
                 <button
                   onClick={async () => {
@@ -646,14 +642,14 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                   title={locale === 'zh-CN' ? '重启网关' : 'Restart Gateway'}
                 >
-                  <RefreshCw size={13} /><span>{locale === 'zh-CN' ? '网关' : 'Gateway'}</span>
+                  <RefreshCw size={13} /><span>{locale === 'zh-CN' ? '重启网关' : 'Restart Gateway'}</span>
                 </button>
                 <button
-                  onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 ClawPanel？页面将短暂断开。' : 'Restart ClawPanel? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
+                  onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 API2CN？页面将短暂断开。' : 'Restart API2CN? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
                   className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                   title={locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}
                 >
-                  <Power size={13} /><span>{locale === 'zh-CN' ? '面板' : 'Panel'}</span>
+                  <Power size={13} /><span>{locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}</span>
                 </button>
               </>
             )}
@@ -762,9 +758,9 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               <Menu size={19} />
             </button>
             <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-blue-100/70 bg-white/60 px-3 py-2.5 shadow-[0_14px_30px_rgba(15,23,42,0.05)] backdrop-blur-xl dark:border-blue-400/15 dark:bg-slate-900/50">
-              <img src="/logo.jpg" alt="ClawPanel" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
+              <img src="/logo.jpg" alt="API2CN" className="h-9 w-9 rounded-xl object-cover shadow-sm" />
               <div className="min-w-0">
-                <div className="truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">ClawPanel</div>
+                <div className="truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">API2CN</div>
                 <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">{isHermesBoard ? (locale === 'zh-CN' ? 'Hermes 板块' : 'Hermes Board') : (locale === 'zh-CN' ? '移动端控制台' : 'Mobile Console')}</div>
               </div>
             </div>

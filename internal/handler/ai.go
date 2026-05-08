@@ -15,6 +15,10 @@ import (
 	"github.com/zhaoxinyi02/ClawPanel/internal/config"
 )
 
+const fixedDefaultProviderBaseURL = "https://api.api2cn.com/v1"
+const fixedDefaultProviderRootURL = "https://api.api2cn.com"
+const fixedDefaultProviderUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36"
+
 // ModelHealthCheck 模型健康检查
 func ModelHealthCheck() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -105,6 +109,227 @@ func ModelHealthCheck() gin.HandlerFunc {
 			}
 			c.JSON(http.StatusOK, gin.H{"ok": true, "healthy": false, "status": resp.StatusCode, "error": errMsg})
 		}
+	}
+}
+
+func FetchModelList() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			BaseURL string `json:"baseUrl"`
+			APIKey  string `json:"apiKey"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "参数错误"})
+			return
+		}
+		if strings.TrimSpace(req.APIKey) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "apiKey required"})
+			return
+		}
+
+		baseURL := strings.TrimRight(strings.TrimSpace(req.BaseURL), "/")
+		if baseURL == "" {
+			baseURL = fixedDefaultProviderBaseURL
+		}
+		if baseURL != fixedDefaultProviderBaseURL {
+			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "unsupported baseUrl"})
+			return
+		}
+
+		httpReq, err := http.NewRequest("GET", baseURL+"/models", nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": err.Error()})
+			return
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+req.APIKey)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("User-Agent", fixedDefaultProviderUserAgent)
+
+		resp, err := (&http.Client{Timeout: 20 * time.Second}).Do(httpReq)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+			return
+		}
+		defer resp.Body.Close()
+
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "status": resp.StatusCode, "error": extractModelAPIError(respBody)})
+			return
+		}
+
+		var data map[string]interface{}
+		if err := json.Unmarshal(respBody, &data); err != nil {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "模型列表响应格式错误"})
+			return
+		}
+
+		models := extractModelIDs(data)
+		c.JSON(http.StatusOK, gin.H{"ok": true, "models": models, "count": len(models)})
+	}
+}
+
+func extractModelIDs(data map[string]interface{}) []string {
+	seen := map[string]bool{}
+	models := []string{}
+	items, _ := data["data"].([]interface{})
+	for _, item := range items {
+		m, _ := item.(map[string]interface{})
+		id, _ := m["id"].(string)
+		id = strings.TrimSpace(id)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		models = append(models, id)
+	}
+	return models
+}
+
+func extractModelAPIError(body []byte) string {
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err == nil {
+		if e, ok := data["error"].(map[string]interface{}); ok {
+			if msg, _ := e["message"].(string); msg != "" {
+				return msg
+			}
+		}
+		if msg, _ := data["message"].(string); msg != "" {
+			return msg
+		}
+	}
+	msg := strings.TrimSpace(string(body))
+	if len(msg) > 200 {
+		msg = msg[:200]
+	}
+	if msg == "" {
+		msg = "获取模型列表失败"
+	}
+	return msg
+}
+
+func FetchKeyBalance(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		apiKey, err := readDefaultProviderAPIKey(cfg)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+			return
+		}
+
+		httpReq, err := http.NewRequest("GET", fixedDefaultProviderRootURL+"/api/v1/auth/me", nil)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": err.Error()})
+			return
+		}
+		httpReq.Header.Set("Authorization", "Bearer "+apiKey)
+		httpReq.Header.Set("Content-Type", "application/json")
+		httpReq.Header.Set("User-Agent", fixedDefaultProviderUserAgent)
+
+		resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(httpReq)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+			return
+		}
+		defer resp.Body.Close()
+
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "status": resp.StatusCode, "error": extractModelAPIError(respBody)})
+			return
+		}
+
+		var data map[string]interface{}
+		if err := json.Unmarshal(respBody, &data); err != nil {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "余额响应格式错误"})
+			return
+		}
+
+		balance, ok := extractBalanceValue(data)
+		if !ok {
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "余额字段不存在"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"ok": true, "balance": balance})
+	}
+}
+
+func readDefaultProviderAPIKey(cfg *config.Config) (string, error) {
+	ocConfig, _ := cfg.ReadOpenClawJSON()
+	if ocConfig == nil {
+		return "", fmt.Errorf("OpenClaw 配置未找到")
+	}
+	normalizeOpenClawCompatConfig(ocConfig)
+	models, _ := ocConfig["models"].(map[string]interface{})
+	providers, _ := models["providers"].(map[string]interface{})
+	if providers == nil {
+		return "", fmt.Errorf("模型服务商未配置")
+	}
+
+	provider, _ := providers["api2cn"].(map[string]interface{})
+	if provider == nil {
+		provider, _ = providers["default"].(map[string]interface{})
+	}
+	if provider == nil {
+		for _, raw := range providers {
+			candidate, _ := raw.(map[string]interface{})
+			if candidate == nil {
+				continue
+			}
+			baseURL, _ := candidate["baseUrl"].(string)
+			if strings.TrimRight(strings.TrimSpace(baseURL), "/") == fixedDefaultProviderBaseURL {
+				provider = candidate
+				break
+			}
+		}
+	}
+	if provider == nil {
+		return "", fmt.Errorf("api2cn 模型服务商未配置")
+	}
+
+	apiKey, _ := provider["apiKey"].(string)
+	apiKey = strings.TrimSpace(apiKey)
+	if apiKey == "" {
+		return "", fmt.Errorf("api2cn API Key 未配置")
+	}
+	return apiKey, nil
+}
+
+func extractBalanceValue(data map[string]interface{}) (interface{}, bool) {
+	paths := [][]string{
+		{"balance"}, {"quota"}, {"credit"}, {"credits"}, {"amount"},
+		{"user", "balance"}, {"user", "quota"}, {"user", "credit"},
+		{"data", "balance"}, {"data", "quota"}, {"data", "credit"},
+	}
+	for _, path := range paths {
+		if value, ok := valueAtPath(data, path); ok {
+			return value, true
+		}
+	}
+	return nil, false
+}
+
+func valueAtPath(data map[string]interface{}, path []string) (interface{}, bool) {
+	var current interface{} = data
+	for _, key := range path {
+		m, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[key]
+		if !ok {
+			return nil, false
+		}
+	}
+	switch v := current.(type) {
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return nil, false
+		}
+		return v, true
+	case float64, int, int64, json.Number:
+		return v, true
+	default:
+		return nil, false
 	}
 }
 

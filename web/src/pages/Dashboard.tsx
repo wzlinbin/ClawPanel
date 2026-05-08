@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import {
   Wifi, Users, Cpu, Clock, RefreshCw,
   ChevronDown, ChevronRight, ArrowDown, Activity,
-  MemoryStick, Radio, TrendingUp, AlertTriangle, Download, Brain, Loader2,
+  MemoryStick, Radio, TrendingUp, AlertTriangle, Download, Brain, Loader2, Wallet,
 } from 'lucide-react';
 import type { LogEntry } from '../hooks/useWebSocket';
 import { useI18n } from '../i18n';
@@ -71,6 +71,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
   const [sessionActivity, setSessionActivity] = useState<SessionActivityItem[]>([]);
+  const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; error?: string }>({ loading: true });
 
   useEffect(() => {
     api.getStatus().then(r => { if (r.ok) setStatus(r); });
@@ -93,6 +94,22 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
     loadSessionActivity();
     const t = setInterval(loadSessionActivity, 10000);
     const onVisible = () => { if (!document.hidden) loadSessionActivity(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
+  }, []);
+
+  useEffect(() => {
+    const loadKeyBalance = () => {
+      if (document.hidden) return;
+      setKeyBalance(prev => ({ ...prev, loading: true }));
+      api.getKeyBalance().then(r => {
+        if (r?.ok) setKeyBalance({ loading: false, value: formatBalanceValue(r.balance) });
+        else setKeyBalance({ loading: false, error: r?.error || '余额获取失败' });
+      }).catch((err: any) => setKeyBalance({ loading: false, error: err?.message || '余额获取失败' }));
+    };
+    loadKeyBalance();
+    const t = setInterval(loadKeyBalance, 60000);
+    const onVisible = () => { if (!document.hidden) loadKeyBalance(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
@@ -228,7 +245,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">OpenClaw 尚未安装</h3>
             <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
-              ClawPanel 需要 OpenClaw AI 引擎才能正常工作。安装后即可配置模型、管理技能和连接通道。
+              API2CN 需要 OpenClaw AI 引擎才能正常工作。安装后即可配置模型、管理技能和连接通道。
             </p>
             {installOpenClawMsg && <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-3 max-w-md mx-auto">{installOpenClawMsg}</p>}
             {installOpenClawErr && <p className="text-xs text-red-600 dark:text-red-300 mt-3 max-w-md mx-auto">{installOpenClawErr}</p>}
@@ -290,6 +307,8 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
           color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-900/20" modern={modern} />
         <StatCard icon={Cpu} label={t.dashboard.aiModel} value={oc.currentModel ? shortenModel(oc.currentModel) : t.dashboard.notSet}
           sub={oc.currentModel || ''} color="text-violet-600" bg="bg-violet-50 dark:bg-violet-900/20" modern={modern} />
+        <StatCard icon={Wallet} label="KEY 余额" value={keyBalance.loading ? '...' : (keyBalance.value || '--')}
+          sub={keyBalance.error || 'api2cn'} color={keyBalance.error ? 'text-amber-600' : 'text-emerald-600'} bg={keyBalance.error ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'} modern={modern} />
         <StatCard icon={Clock} label={t.dashboard.uptime} value={formatUptime(adm.uptime || 0, t).split(/(\d+)/)[1]} unit={formatUptime(adm.uptime || 0, t).split(/(\d+)/)[2]}
           color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/20" modern={modern} />
         <StatCard icon={MemoryStick} label={t.dashboard.memory} value={`${adm.memoryMB || 0}`} unit="MB"
@@ -429,6 +448,14 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       </div>
     </div>
   );
+}
+
+function formatBalanceValue(value: any) {
+  if (typeof value === 'number') return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  const text = String(value ?? '').trim();
+  const numeric = Number(text);
+  if (text !== '' && Number.isFinite(numeric)) return numeric.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  return text || '--';
 }
 
 function StatCard({ icon: Icon, label, value, unit, color, bg, sub, modern }: { icon: any; label: string; value: string; unit?: string; color: string; bg: string; sub?: string; modern?: boolean }) {

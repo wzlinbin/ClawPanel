@@ -1161,7 +1161,7 @@ export default function Skills() {
             <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
               <button onClick={() => setHubSource('clawhub')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${hubSource === 'clawhub' ? 'bg-white dark:bg-gray-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
-                <Globe size={14} /> ClawPanel 自定义仓库
+                <Globe size={14} /> API2CN 自定义仓库
               </button>
               <button onClick={() => setHubSource('skillhub')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${hubSource === 'skillhub' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
@@ -1202,8 +1202,8 @@ export default function Skills() {
                 <Globe size={20} className="text-blue-600 dark:text-blue-300" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">ClawPanel 自定义技能仓库</h3>
-                <p className="text-xs text-gray-500">从你的 ClawPanel-Plugins 仓库自动刷新技能列表，并安装到当前工作区</p>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">API2CN 自定义技能仓库</h3>
+                <p className="text-xs text-gray-500">从你的 API2CN-Plugins 仓库自动刷新技能列表，并安装到当前工作区</p>
                 <p className="text-[11px] text-gray-400 mt-1">{storeInstallTarget === 'agent' ? t.skills.installTargetAgentHint : t.skills.installTargetGlobalHint}</p>
               </div>
             </div>
@@ -1234,7 +1234,7 @@ export default function Skills() {
 
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={search} onChange={e => { setSearch(e.target.value); debouncedHubSearch(); }} onKeyDown={e => e.key === 'Enter' && handleSearchClawHub()} placeholder="搜索 ClawPanel 自定义技能"
+            <input value={search} onChange={e => { setSearch(e.target.value); debouncedHubSearch(); }} onKeyDown={e => e.key === 'Enter' && handleSearchClawHub()} placeholder="搜索 API2CN 自定义技能"
               className="w-full pl-9 pr-10 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" />
             <button onClick={handleSearchClawHub} className="absolute right-3 top-1/2 -translate-y-1/2 text-violet-600 hover:text-violet-700">
               <Search size={14} />

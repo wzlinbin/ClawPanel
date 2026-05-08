@@ -44,7 +44,7 @@ export default function Login({ onLogin }: { onLogin: (pw: string) => Promise<bo
           <div className="mb-6 flex flex-col items-center text-center">
             <div className="relative mb-3">
               <div className="absolute inset-x-12 bottom-3 top-8 rounded-full bg-blue-500/10 blur-3xl" />
-              <img src="/logo.png" alt="ClawPanel" className="relative w-48 max-w-full h-auto object-contain drop-shadow-[0_16px_26px_rgba(59,130,246,0.14)] sm:w-56" />
+              <img src="/logo.png" alt="API2CN" className="relative w-48 max-w-full h-auto object-contain drop-shadow-[0_16px_26px_rgba(59,130,246,0.14)] sm:w-56" />
             </div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/45 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-[0_10px_24px_rgba(148,163,184,0.12)] backdrop-blur-2xl dark:border-slate-700/60 dark:bg-slate-900/40 dark:text-slate-300">
               <Sparkles size={12} className="text-blue-500" />
@@ -107,10 +107,6 @@ export default function Login({ onLogin }: { onLogin: (pw: string) => Promise<bo
               </button>
             </div>
           </form>
-
-          <p className="mt-6 text-center text-[11px] text-slate-400 dark:text-slate-500">
-            {t.login.poweredBy}
-          </p>
         </div>
       </div>
     </div>

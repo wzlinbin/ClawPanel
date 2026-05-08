@@ -230,7 +230,7 @@ const _api = {
   checkUpdate: () => post('/system/check-update'),
   doUpdate: () => post('/system/do-update'),
   getUpdateStatus: () => get('/system/update-status'),
-  // ClawPanel 面板自检更新
+  // API2CN 面板自检更新
   getPanelVersion: () => get('/panel/version'),
   checkPanelUpdate: () => get('/panel/check-update'),
   doPanelUpdate: () => post('/panel/do-update'),
@@ -250,6 +250,8 @@ const _api = {
   toggleSkill: (id: string, enabled: boolean, aliases?: string[]) => put(`/system/skills/${id}/toggle`, { enabled, aliases }),
   // Model health check
   checkModelHealth: (baseUrl: string, apiKey: string, apiType: string, modelId?: string) => post('/system/model-health', { baseUrl, apiKey, apiType, modelId }),
+  fetchModelList: (baseUrl: string, apiKey: string) => post('/system/model-list', { baseUrl, apiKey }),
+  getKeyBalance: () => get('/system/key-balance'),
   // AI Assistant chat
   aiChat: (messages: { role: string; content: string }[], providerId?: string, modelId?: string) => postLong('/system/ai-chat', { messages, providerId, modelId }, 120000),
   // Panel chat

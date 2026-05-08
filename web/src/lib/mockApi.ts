@@ -1482,6 +1482,8 @@ TELEGRAM_BOT_TOKEN=123456:demo`,
 
   // --- Misc ---
   checkModelHealth: async (_baseUrl: string, _apiKey: string, _apiType: string, _modelId?: string) => { await delay(1500); return { ok: true, healthy: true, latencyMs: 320, model: _modelId || 'default' }; },
+  fetchModelList: async (_baseUrl: string, _apiKey: string) => { await delay(800); return { ok: true, models: ['gpt-4o', 'gpt-4o-mini', 'deepseek-chat', 'deepseek-reasoner'], count: 4 }; },
+  getKeyBalance: async () => { await delay(500); return { ok: true, balance: 128.56 }; },
   aiChat: async (_messages: any[], _providerId?: string, _modelId?: string) => { await delay(1000); return { ok: true, reply: { role: 'assistant', content: '这是 Demo 模式的 AI 回复。在前端开发模式下，AI 聊天功能返回模拟数据。' } }; },
   getPanelChatSessions: async () => { await delay(120); return { ok: true, sessions: JSON.parse(JSON.stringify(fakePanelChatSessions)) }; },
   createPanelChatSession: async (data?: { title?: string; chatType?: 'direct' | 'group'; agentId?: string; agentIds?: string[]; summaryAgentId?: string; sharedContextPaths?: string[] }) => {

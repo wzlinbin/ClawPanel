@@ -60,7 +60,7 @@ export function resolveOpenClawRuntime(openclawStatus?: any, processStatus?: any
       title: gatewayRunning ? '网关在线，但运行状态异常' : 'OpenClaw 进程存在，但网关离线',
       message: gatewayRunning
         ? 'OpenClaw 网关仍可访问，但面板未确认到稳定主进程；运行相关页面可能出现状态不同步。'
-        : 'ClawPanel 检测到 OpenClaw 进程仍在运行，但消息网关当前不可达；通道收发和 AI 请求可能失败。',
+        : 'API2CN 检测到 OpenClaw 进程仍在运行，但消息网关当前不可达；通道收发和 AI 请求可能失败。',
     };
   }
 

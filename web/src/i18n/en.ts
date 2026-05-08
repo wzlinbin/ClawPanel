@@ -45,7 +45,7 @@ const en: Translations = {
   },
 
   login: {
-    title: 'ClawPanel',
+    title: 'API2CN',
     subtitle: 'OpenClaw Management Panel',
     passwordLabel: 'Admin Password',
     passwordPlaceholder: 'Enter panel password',
@@ -458,7 +458,7 @@ const en: Translations = {
     softwareVersions: 'Software Versions',
     runtimeInfo: 'Runtime Info',
     changePassword: 'Change Admin Password',
-    changePasswordDesc: 'Change ClawPanel admin login password. You will need to re-login after changing.',
+    changePasswordDesc: 'Change API2CN admin login password. You will need to re-login after changing.',
     currentPassword: 'Current password',
     newPassword: 'New password',
     confirmPassword: 'Confirm new password',

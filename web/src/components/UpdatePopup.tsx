@@ -31,7 +31,7 @@ export default function UpdatePopup() {
               <Sparkles size={24} />
             </div>
             <div>
-              <h2 className="text-lg font-bold">ClawPanel 已更新到 {popup.version}</h2>
+              <h2 className="text-lg font-bold">API2CN 已更新到 {popup.version}</h2>
               <p className="text-violet-200 text-xs mt-0.5">更新已完成，无需手动操作</p>
             </div>
           </div>
