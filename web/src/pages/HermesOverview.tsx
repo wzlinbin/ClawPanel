@@ -233,7 +233,7 @@ export default function HermesOverview() {
           <h2 className={`${modern ? 'page-modern-title text-xl' : 'text-xl font-bold text-gray-900 dark:text-white'}`}>Hermes</h2>
           <p className={`${modern ? 'page-modern-subtitle mt-1 text-sm' : 'text-sm text-gray-500 mt-1'}`}>
             {locale === 'zh-CN'
-              ? 'Hermes 作为与 OpenClaw 并列的独立 Agent 控制台接入，状态、平台、日志、任务、动作与 Profiles 都可以在这里统一管理。'
+              ? '首次下载安装Hermes后，请执行Hermes Setup，启用消息通道后，记得要Hermes Gateway Install并启动消息网关'
               : 'Hermes is integrated as an independent agent console alongside OpenClaw, with status, platforms, logs, tasks, actions, and profiles managed here.'}
           </p>
         </div>

@@ -131,7 +131,7 @@ func printSuccess(installDir string) {
 	fmt.Println("  ============================================================")
 	fmt.Println()
 	fmt.Println("  访问地址: http://localhost:" + PORT)
-	fmt.Println("  默认密码: clawpanel")
+	fmt.Println("  默认密码: admin123")
 	fmt.Println()
 	fmt.Println("  安装目录: " + installDir)
 	fmt.Println("  数据目录: " + installDir + "\\data")

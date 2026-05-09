@@ -24,3 +24,20 @@
   1. C:\Program Files\Git\bin\bash.exe -n scripts/install-source.sh
   2. PowerShell 结构检查脚本确认关键片段存在
 - 未验证部分：未在 Linux/macOS 真机执行安装；补偿计划是在目标机运行脚本后检查 systemctl status clawpanel 或 launchctl 状态。
+
+** 验证报告 - openclaw-dashboard-hide
+时间：2026-05-09 17:34:55
+
+# 审查结论
+技术维度评分：94/100
+战略维度评分：95/100
+综合评分：95/100
+建议：通过
+
+# 验证步骤
+1. rg -n "path: '/logs'|path: '/monitor'|活动日志|编排监控" web/src/components/Layout.tsx：无匹配。
+2. rg -n "recentActivity|realtimeLog|Recent activity|recentFeed" web/src/pages/Dashboard.tsx：无匹配。
+3. npm run build：通过。
+
+# 风险说明
+旧路由组件仍保留，当前需求为隐藏菜单和仪表盘卡片，因此未删除路由与页面文件。

@@ -1,9 +1,8 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../lib/api';
 import {
-  Wifi, Users, Cpu, Clock, RefreshCw,
-  ChevronDown, ChevronRight, ArrowDown, Activity,
+  Wifi, Users, Cpu, Clock,
   MemoryStick, Radio, TrendingUp, AlertTriangle, Download, Brain, Loader2,
 } from 'lucide-react';
 import type { LogEntry } from '../hooks/useWebSocket';
@@ -67,9 +66,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   const { uiMode } = (useOutletContext() as { uiMode?: 'modern' }) || {};
   const modern = uiMode === 'modern';
   const [status, setStatus] = useState<any>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const logRef = useRef<HTMLDivElement>(null);
   const [sessionActivity, setSessionActivity] = useState<SessionActivityItem[]>([]);
 
   useEffect(() => {
@@ -97,10 +93,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
-  useEffect(() => {
-    if (autoScroll && logRef.current) logRef.current.scrollTop = 0;
-  }, [sessionActivity.length, logEntries.length, autoScroll]);
-
   const nc = status?.napcat || {};
   const wc = status?.wechat || {};
   const oc = status?.openclaw || {};
@@ -117,12 +109,9 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
         ? 'red'
         : 'amber';
 
-  const filteredLogs = useMemo(() => logEntries.filter(entry => !isNoiseEvent(entry)), [logEntries]);
   const messageLogCount = sessionActivity.reduce((sum, item) => sum + (item.messageCount || 0), 0);
   const inboundCount = sessionActivity.length;
   const botCount = sessionActivity.filter(item => (item.messageCount || 0) > 1).length;
-  const recentFeed = useMemo(() => buildRecentFeed(filteredLogs, sessionActivity).slice(0, 100), [filteredLogs, sessionActivity]);
-  const getExpandableContent = (entry: RecentFeedItem) => entry.detail?.trim() || entry.summary?.trim() || '';
 
   // Build connected channels dynamically from enabledChannels returned by /api/status
   const enabledChannels: { id: string; label: string; type: string }[] = (oc.enabledChannels || [])
@@ -355,75 +344,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
         </div>
       )}
 
-      {/* Recent activity */}
-      <div className={`${modern ? 'console-table' : 'bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700/50'} flex min-h-0 flex-1 flex-col overflow-hidden`}>
-        <div className={`flex shrink-0 items-center justify-between px-5 py-4 ${modern ? 'border-b border-[var(--ui-border)] bg-[var(--ui-panel-muted)]' : 'border-b border-gray-50 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-800/50'}`}>
-          <div className="flex items-center gap-2.5">
-            <div className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-accent-soft)] p-1.5 text-[var(--ui-accent)] shadow-sm">
-              <Activity size={16} />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm text-gray-900 dark:text-white">{t.dashboard.recentActivity}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-[10px] text-gray-500">{t.dashboard.realtimeLog}</p>
-                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border border-blue-100/80 bg-blue-50/80 text-blue-600 dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-300">{recentFeed.length}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setAutoScroll(!autoScroll)}
-              title={autoScroll ? t.dashboard.pauseScroll : t.dashboard.resumeScroll}
-              className={`p-2 rounded-xl transition-all ${autoScroll ? 'bg-blue-50/80 text-blue-600 shadow-sm ring-1 ring-blue-100 dark:bg-blue-900/20 dark:ring-blue-800/40 dark:text-blue-300' : 'text-gray-400 hover:bg-white/70 dark:hover:bg-slate-800/70'}`}>
-              <ArrowDown size={14} />
-            </button>
-              <button onClick={refreshLog} title={t.dashboard.refreshLog} className="p-2 rounded-xl hover:bg-white/70 dark:hover:bg-slate-800/70 text-gray-400 transition-colors">
-                <RefreshCw size={14} />
-              </button>
-          </div>
-        </div>
-        <div ref={logRef} className="flex-1 overflow-y-auto min-h-0 p-2 space-y-0.5">
-          {recentFeed.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
-              <Clock size={32} className="opacity-20" />
-              <p className="text-xs">{t.dashboard.noActivity}</p>
-            </div>
-          )}
-          {recentFeed.map((entry) => (
-            <div key={entry.id} className="group">
-              <div
-                className={`flex items-start gap-3 py-2.5 px-3.5 rounded-xl transition-all duration-200 text-xs border border-transparent
-                  ${getExpandableContent(entry) ? 'cursor-pointer' : 'cursor-default'}
-                  ${expandedId === entry.id ? 'bg-white/72 dark:bg-slate-800/55 border-blue-100/70 dark:border-slate-700/70 shadow-sm shadow-blue-100/30 dark:shadow-none' : 'hover:bg-white/68 dark:hover:bg-slate-800/35 hover:border-blue-100/50 dark:hover:border-slate-700/50'}`}
-                onClick={() => {
-                  if (!getExpandableContent(entry)) return;
-                  setExpandedId(expandedId === entry.id ? null : entry.id);
-                }}
-              >
-                <span className="text-gray-400 shrink-0 font-mono text-[10px] pt-0.5 opacity-70 group-hover:opacity-100 transition-opacity">{formatLogTime(entry.time)}</span>
-                
-                 <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase border ${sourceColor(entry.source)}`}>
-                  {sourceLabel(entry.source)}
-                 </span>
-                
-                <div className="flex-1 min-w-0">
-                  <p className={`truncate font-medium leading-relaxed ${entry.source === 'openclaw' ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                    {entry.summary}
-                  </p>
-                </div>
-
-                {getExpandableContent(entry) ? (
-                  <ChevronDown size={12} className={`shrink-0 text-gray-300 transition-transform duration-200 ${expandedId === entry.id ? 'rotate-180 text-gray-500' : ''}`} />
-                ) : <span className="w-3" />}
-              </div>
-              {expandedId === entry.id && getExpandableContent(entry) && (
-                <div className="ml-12 mr-3 mb-2 mt-1 px-4 py-3 rounded-xl bg-white/65 dark:bg-slate-900/55 border border-blue-100/70 dark:border-slate-700/70 text-[11px] font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all shadow-inner max-h-60 overflow-y-auto backdrop-blur-xl">
-                  {getExpandableContent(entry)}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

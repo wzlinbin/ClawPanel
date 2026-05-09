@@ -478,7 +478,7 @@ func AIChat(cfg *config.Config) gin.HandlerFunc {
 - 技术栈: Go + React + TailwindCSS (v5.0.2)
 - 支持的通道: QQ, 微信, Telegram, Discord 等 20+
 - 技能系统: 支持 65+ 内置技能和自定义技能
-- 面板默认端口: 19527，默认密码: clawpanel
+- 面板默认端口: 19527，默认密码: admin123
 - 面板数据目录: ~/.clawpanel/
 - 面板支持一键自检更新（GitHub Releases）
 

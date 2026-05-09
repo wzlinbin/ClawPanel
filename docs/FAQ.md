@@ -54,7 +54,7 @@ systemctl status clawpanel
 sudo systemctl enable clawpanel
 ```
 
-> ⚠️ 这里需要的是你的 **Linux 系统用户密码**，不是 ClawPanel 面板登录密码（默认 `clawpanel`）。
+> ⚠️ 这里需要的是你的 **Linux 系统用户密码**，不是 ClawPanel 面板登录密码（默认 `admin123`）。
 
 ### Q: ARM 架构（树莓派、M1/M2 Mac）能用吗？
 
@@ -119,7 +119,7 @@ chmod 755 ~/.clawpanel
 
 ### Q: 默认登录密码是什么？
 
-**A:** 默认密码是 `clawpanel`。首次登录后建议立即修改：
+**A:** 默认密码是 `admin123`。首次登录后建议立即修改：
 
 - 面板内：系统配置 → 身份认证 → 修改管理密码
 - 或命令行：编辑 `~/.clawpanel/clawpanel.json`，修改 `adminToken` 字段

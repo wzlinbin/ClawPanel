@@ -837,7 +837,7 @@ export default function HermesPlatforms() {
           </h2>
           <p className={`${modern ? 'page-modern-subtitle mt-1' : 'mt-1'} text-base font-bold text-red-600 dark:text-red-400`}>
             {locale === 'zh-CN'
-              ? '配置 Hermes 消息平台的机器人凭证和运行参数。配置完成后，请到动作菜单-安装 Hermes 消息网关依赖并启动'
+              ? '配置 Hermes 消息平台的机器人凭证和运行参数。配置完成后，请到概览-安装 Hermes 消息网关依赖并启动'
               : 'Configure Hermes messaging platform bot credentials and runtime parameters.'}
           </p>
           <p className="text-xs text-gray-500 mt-1.5 inline-flex items-center gap-3 flex-wrap">

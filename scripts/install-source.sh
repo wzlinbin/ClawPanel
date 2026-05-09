@@ -7,11 +7,11 @@
 #   curl -fsSL https://raw.githubusercontent.com/wzlinbin/ClawPanel/main/scripts/install-source.sh | sudo bash
 #
 # 可选环境变量：
-#   RELEASE_URL=https://github.com/wzlinbin/ClawPanel/releases/latest/download/clawpanel
+#   RELEASE_URL=https://github.com/wzlinbin/ClawPanel/releases/download/latest/clawpanel
 #   INSTALL_DIR=/opt/clawpanel
 #   DATA_DIR=/opt/clawpanel/data
 #   PORT=19527
-#   ADMIN_TOKEN=clawpanel
+#   ADMIN_TOKEN=admin123
 #   CLAWPANEL_SECRET=clawpanel-secret-change-me
 #   CLAWPANEL_SERVICE_USER=root
 # ============================================================
@@ -20,11 +20,11 @@ set -Eeuo pipefail
 
 BINARY_NAME="clawpanel"
 SERVICE_NAME="${SERVICE_NAME:-clawpanel}"
-RELEASE_URL="${RELEASE_URL:-https://github.com/wzlinbin/ClawPanel/releases/latest/download/clawpanel}"
+RELEASE_URL="${RELEASE_URL:-https://github.com/wzlinbin/ClawPanel/releases/download/latest/clawpanel}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/clawpanel}"
 DATA_DIR="${DATA_DIR:-${INSTALL_DIR}/data}"
 PORT="${PORT:-${CLAWPANEL_PORT:-19527}}"
-ADMIN_TOKEN="${ADMIN_TOKEN:-clawpanel}"
+ADMIN_TOKEN="${ADMIN_TOKEN:-admin123}"
 CLAWPANEL_SECRET="${CLAWPANEL_SECRET:-clawpanel-secret-change-me}"
 BUILD_ROOT=""
 DOWNLOADED_BINARY=""

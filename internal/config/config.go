@@ -36,7 +36,7 @@ const (
 	DefaultPort       = 19527
 	ConfigFileName    = "clawpanel.json"
 	DefaultJWTSecret  = "clawpanel-secret-change-me"
-	DefaultAdminToken = "clawpanel"
+	DefaultAdminToken = "admin123"
 )
 
 // Load 加载配置，如果不存在则创建默认配置

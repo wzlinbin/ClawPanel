@@ -354,7 +354,7 @@ EOF
     echo -e "${GREEN}=================================================================${NC}"
     echo ""
     echo -e "  ${BOLD}面板地址${NC}:  ${CYAN}http://${SERVER_IP}:${PORT}${NC}"
-    echo -e "  ${BOLD}默认密码${NC}:  ${CYAN}clawpanel${NC}"
+    echo -e "  ${BOLD}默认密码${NC}:  ${CYAN}admin123${NC}"
     echo ""
     echo -e "  ${BOLD}安装目录${NC}:  ${INSTALL_DIR}"
     echo -e "  ${BOLD}数据目录${NC}:  ${INSTALL_DIR}/data"

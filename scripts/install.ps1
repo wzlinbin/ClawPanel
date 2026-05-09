@@ -158,7 +158,7 @@ Write-Host "                                                                   "
 Write-Host "  =================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  面板地址:  http://localhost:$PORT" -ForegroundColor Cyan
-Write-Host "  默认密码:  clawpanel" -ForegroundColor Cyan
+Write-Host "  默认密码:  admin123" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  安装目录:  $INSTALL_DIR" -ForegroundColor White
 Write-Host "  数据目录:  $INSTALL_DIR\data" -ForegroundColor White

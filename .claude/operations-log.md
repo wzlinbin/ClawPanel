@@ -234,3 +234,23 @@ web/src/pages/HermesOverview.tsx：任务轮询改为只刷新动作任务数据
 - C:\Program Files\Git\bin\bash.exe -n scripts/install-source.sh：通过。
 - 关键结构检查：通过，覆盖 clone、前端构建、embed 同步、Go 构建、systemd/launchd、配置写入。
 - shellcheck：本机未安装，已记录为工具缺失，使用 Bash 语法校验和结构检查替代。
+
+** 编码后声明 - openclaw-dashboard-hide
+时间：2026-05-09 17:34:55
+
+# 1. 复用了以下既有组件
+web/src/components/Layout.tsx: 复用既有导航数组控制菜单展示。
+web/src/pages/Dashboard.tsx: 复用既有页面结构删除目标卡片渲染。
+
+# 2. 遵循了以下项目约定
+命名约定：未新增命名实体。
+代码风格：沿用现有 React 函数组件与 Tailwind 写法。
+文件组织：仅修改现有布局与页面文件。
+
+# 3. 对比了以下相似实现
+openClawNavItems: 菜单显示由数组项决定，本次确认活动日志与编排监控不在侧栏数组。
+commandItems: 搜索入口由 path 命令项决定，本次移除 /logs 与 /monitor。
+DashboardPage: 卡片为 JSX 区块渲染，本次删除最新活动区块并保留统计数据依赖。
+
+# 4. 未重复造轮子的证明
+检查了 web/src/components/Layout.tsx 与 web/src/pages/Dashboard.tsx，需求可通过现有声明式渲染入口完成，无需新增组件或工具。
