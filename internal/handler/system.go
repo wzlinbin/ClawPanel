@@ -758,7 +758,7 @@ func panelMirrorSpec(edition string) (updatemirror.EditionSpec, error) {
 	case "", "pro":
 		return updatemirror.EditionSpec{
 			Edition:           "pro",
-			GitHubReleasesAPI: "https://api.github.com/repos/zhaoxinyi02/ClawPanel/releases?per_page=20",
+			GitHubReleasesAPI: "https://api.github.com/repos/wzlinbin/ClawPanel/releases?per_page=20",
 			GitHubTagPrefix:   "pro-v",
 		}, nil
 	default:
