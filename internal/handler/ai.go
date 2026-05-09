@@ -16,8 +16,7 @@ import (
 )
 
 const fixedDefaultProviderBaseURL = "https://api.api2cn.com/v1"
-const fixedDefaultProviderRootURL = "https://api.api2cn.com"
-const fixedDefaultProviderBalanceURL = fixedDefaultProviderRootURL + "/api/v1/public/balance"
+const fixedDefaultProviderUsageURL = fixedDefaultProviderBaseURL + "/usage"
 const fixedDefaultProviderUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36"
 
 // ModelHealthCheck 模型健康检查
@@ -217,7 +216,7 @@ func FetchKeyBalance(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		httpReq, err := http.NewRequest("POST", fixedDefaultProviderBalanceURL, nil)
+		httpReq, err := http.NewRequest("GET", fixedDefaultProviderUsageURL, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": err.Error()})
 			return
@@ -228,44 +227,51 @@ func FetchKeyBalance(cfg *config.Config) gin.HandlerFunc {
 
 		resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(httpReq)
 		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "请求 api2cn 余额接口失败: " + err.Error(), "target": fixedDefaultProviderBalanceURL})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "请求 api2cn 用量接口失败: " + err.Error(), "target": fixedDefaultProviderUsageURL})
 			return
 		}
 		defer resp.Body.Close()
 
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024*1024))
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "status": resp.StatusCode, "error": "api2cn 余额接口返回异常: " + extractModelAPIError(respBody), "target": fixedDefaultProviderBalanceURL})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "status": resp.StatusCode, "error": "api2cn 用量接口返回异常: " + extractModelAPIError(respBody), "target": fixedDefaultProviderUsageURL})
 			return
 		}
 
 		var data map[string]interface{}
 		if err := json.Unmarshal(respBody, &data); err != nil {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 余额响应格式错误"})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 用量响应格式错误"})
 			return
 		}
 
 		if code, ok := numericValue(data["code"]); ok && code != 0 {
 			msg, _ := data["message"].(string)
 			if msg == "" {
-				msg = "余额查询失败"
+				msg = "用量查询失败"
 			}
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 余额接口拒绝: " + msg})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 用量接口拒绝: " + msg})
 			return
 		}
 
-		balance, ok := extractBalanceValue(data)
+		remaining, ok := extractRemainingValue(data)
 		if !ok {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 余额响应缺少 balance/quota 字段"})
+			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "api2cn 用量响应缺少 remaining 字段"})
 			return
 		}
 
-		result := gin.H{"ok": true, "balance": balance}
-		if payload, ok := data["data"].(map[string]interface{}); ok {
-			for _, key := range []string{"balance", "quota", "quota_used", "quota_remaining", "api_key_name", "api_key_status", "user_status", "expires_at"} {
-				if value, exists := payload[key]; exists {
-					result[key] = value
-				}
+		result := gin.H{"ok": true, "remaining": remaining}
+		payload := data
+		if nested, ok := data["data"].(map[string]interface{}); ok {
+			payload = nested
+		}
+		for _, key := range []string{"planName", "remaining", "unit", "subscription"} {
+			if value, exists := payload[key]; exists {
+				result[key] = value
+			}
+		}
+		if sub, ok := payload["subscription"].(map[string]interface{}); ok {
+			if value, exists := sub["expires_at"]; exists {
+				result["expires_at"] = value
 			}
 		}
 		c.JSON(http.StatusOK, result)
@@ -325,6 +331,31 @@ func extractBalanceValue(data map[string]interface{}) (interface{}, bool) {
 		}
 	}
 	return nil, false
+}
+
+func extractRemainingValue(data map[string]interface{}) (interface{}, bool) {
+	paths := [][]string{
+		{"remaining"}, {"quota_remaining"}, {"data", "remaining"}, {"data", "quota_remaining"},
+	}
+	for _, path := range paths {
+		if value, ok := valueAtPath(data, path); ok {
+			return value, true
+		}
+	}
+
+	payload := data
+	if nested, ok := data["data"].(map[string]interface{}); ok {
+		payload = nested
+	}
+	if sub, ok := payload["subscription"].(map[string]interface{}); ok {
+		limit, hasLimit := numericValue(sub["weekly_limit_usd"])
+		usage, hasUsage := numericValue(sub["weekly_usage_usd"])
+		if hasLimit && hasUsage {
+			return limit - usage, true
+		}
+	}
+
+	return extractBalanceValue(data)
 }
 
 func valueAtPath(data map[string]interface{}, path []string) (interface{}, bool) {

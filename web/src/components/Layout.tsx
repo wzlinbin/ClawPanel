@@ -88,12 +88,30 @@ function parseBalanceAmount(value: any) {
 }
 
 function formatBalanceDetail(data: any) {
-  const parts: string[] = [];
-  if (data?.quota_used !== undefined && data?.quota !== undefined) {
-    parts.push(`${formatBalanceValue(data.quota_used)}/${formatBalanceValue(data.quota)} 已用`);
+  const expiresAt = data?.subscription?.expires_at || data?.expires_at;
+  const days = getRemainingDays(expiresAt);
+  if (days !== undefined) {
+    return days > 0 ? `剩余 ${days} 天` : '额度已到期';
   }
-  if (data?.currency) parts.push(String(data.currency));
-  return parts.join(' · ') || 'api2cn';
+  return data?.planName || 'api2cn';
+}
+
+function formatUsageRemaining(data: any) {
+  const value = data?.remaining !== undefined
+    ? data.remaining
+    : data?.quota_remaining !== undefined
+      ? data.quota_remaining
+      : data?.balance;
+  const amount = formatBalanceValue(value);
+  const unit = data?.unit ? ` ${data.unit}` : '';
+  return `${amount}${unit}`;
+}
+
+function getRemainingDays(expiresAt: any) {
+  if (!expiresAt) return undefined;
+  const expires = new Date(expiresAt).getTime();
+  if (!Number.isFinite(expires)) return undefined;
+  return Math.max(0, Math.ceil((expires - Date.now()) / (24 * 60 * 60 * 1000)));
 }
 
 function PanelSettingsModal({ open, onClose, onLogout, locale }: { open: boolean; onClose: () => void; onLogout: () => void; locale: string }) {
@@ -261,11 +279,10 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
       setKeyBalance(prev => ({ ...prev, loading: true }));
       api.getKeyBalance().then(r => {
         if (r?.ok) {
-          const value = r.balance !== undefined ? r.balance : r.quota_remaining;
           setKeyBalance({
             loading: false,
-            value: formatBalanceValue(value),
-            amount: parseBalanceAmount(value),
+            value: formatUsageRemaining(r),
+            amount: parseBalanceAmount(r.remaining !== undefined ? r.remaining : r.quota_remaining !== undefined ? r.quota_remaining : r.balance),
             detail: formatBalanceDetail(r),
           });
         } else {
@@ -807,7 +824,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
                     <Wallet size={16} />
                   </span>
                   <div className="min-w-0">
-                    <div className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ui-muted)]">API2CN 余额</div>
+                    <div className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ui-muted)]">API2CN 额度</div>
                     <div className={`truncate text-sm font-black ${
                       keyBalance.error
                         ? 'text-amber-600 dark:text-amber-300'
@@ -817,6 +834,11 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
                     }`}>
                       {keyBalance.loading ? '...' : (keyBalance.value || '--')}
                     </div>
+                    {!keyBalance.loading && !keyBalance.error && keyBalance.detail && (
+                      <div className="truncate text-[10px] font-medium text-[var(--ui-muted)]">
+                        {keyBalance.detail}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1130,8 +1130,10 @@ export default function SystemConfig() {
                         className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed font-mono" />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">API Key</label>
+                      <div className="mb-1.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <label className="text-sm font-black leading-snug text-red-600 dark:text-red-400 md:text-base">
+                          在本站购买相关订阅套餐后，需在API密钥中设置对应的订阅组，并复制API KEYI填写到此处。
+                        </label>
                         {(() => {
                           const matched = KNOWN_PROVIDERS.find(kp => FIXED_DEFAULT_PROVIDER_BASE_URL.includes(kp.baseUrl.replace('https://', '').split('/')[0]));
                           return matched ? (
