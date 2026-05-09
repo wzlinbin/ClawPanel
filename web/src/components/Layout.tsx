@@ -307,13 +307,10 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   const openClawNavItems = useMemo(() => [
     { to: '/', icon: LayoutDashboard, label: t.nav.dashboard },
     { to: '/chat', icon: MessageSquare, label: t.nav.panelChat },
-    { to: '/logs', icon: ScrollText, label: t.nav.activityLog },
     { to: '/channels', icon: Radio, label: t.nav.channels },
     { to: '/skills', icon: Sparkles, label: t.nav.skills },
     { to: '/plugins', icon: Puzzle, label: locale === 'zh-CN' ? '插件中心' : 'Plugins' },
     ...(enableAgents ? [{ to: '/agents', icon: Bot, label: locale === 'zh-CN' ? '智能体' : 'Agents' }] : []),
-    ...(enableAgents ? [{ to: '/monitor', icon: Network, label: locale === 'zh-CN' ? '编排监控' : 'Monitor' }] : []),
-    { to: '/workflows', icon: GitBranch, label: locale === 'zh-CN' ? '工作流' : 'Workflows' },
     { to: '/company', icon: BriefcaseBusiness, label: locale === 'zh-CN' ? 'AI公司' : 'AI Company' },
     { to: '/cron', icon: Clock, label: t.nav.cronJobs },
     { to: '/tasks', icon: Activity, label: locale === 'zh-CN' ? '后台任务' : 'Tasks' },
@@ -337,7 +334,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { to: '/channels', icon: Radio, label: t.nav.channels },
     ...(enableAgents ? [{ to: '/agents', icon: Bot, label: locale === 'zh-CN' ? '智能体' : 'Agents' }] : [{ to: '/plugins', icon: Puzzle, label: locale === 'zh-CN' ? '插件' : 'Plugins' }]),
     { to: '/company', icon: BriefcaseBusiness, label: locale === 'zh-CN' ? 'AI公司' : 'Company' },
-    { to: '/workflows', icon: GitBranch, label: locale === 'zh-CN' ? '工作流' : 'Flows' },
     { to: '/config', icon: Settings, label: t.nav.systemConfig },
   ], [enableAgents, locale, t]);
 
