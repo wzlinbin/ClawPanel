@@ -724,7 +724,7 @@ func GenerateUpdateToken(cfg *config.Config, panelPort int) gin.HandlerFunc {
 			"ok":          true,
 			"token":       token,
 			"updaterPort": updaterPort,
-			"updaterURL":  fmt.Sprintf("%s://%s:%d/updater?token=%s", scheme, host, updaterPort, token),
+			"updaterURL":  fmt.Sprintf("%s://%s:%d/api/panel/updater?token=%s", scheme, host, panelPort, token),
 		})
 	}
 }
