@@ -232,7 +232,7 @@ const _api = {
   getUpdateStatus: () => get('/system/update-status'),
   // API2CN 面板自检更新
   getPanelVersion: () => get('/panel/version'),
-  checkPanelUpdate: () => get('/panel/check-update'),
+  checkPanelUpdate: (refresh = false) => get('/panel/check-update' + (refresh ? '?refresh=1' : '')),
   doPanelUpdate: () => post('/panel/do-update'),
   getPanelUpdateProgress: () => get('/panel/update-progress'),
   getUpdatePopup: () => get('/panel/update-popup'),

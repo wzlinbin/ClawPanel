@@ -97,7 +97,11 @@ func getPlatformKey() string {
 
 // CheckUpdate checks for available updates
 func (u *Updater) CheckUpdate() (*UpdateInfo, bool, error) {
-	info, err := u.resolveLocalUpdate(false, false)
+	return u.CheckUpdateWithRefresh(false)
+}
+
+func (u *Updater) CheckUpdateWithRefresh(refresh bool) (*UpdateInfo, bool, error) {
+	info, err := u.resolveLocalUpdate(refresh, false)
 	if err != nil {
 		return nil, false, fmt.Errorf("请求更新信息失败: %v", err)
 	}

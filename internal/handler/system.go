@@ -619,7 +619,8 @@ func UpdateStatus(cfg *config.Config) gin.HandlerFunc {
 // CheckPanelUpdate 检查 ClawPanel 面板自身更新
 func CheckPanelUpdate(updater *update.Updater) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		info, hasUpdate, err := updater.CheckUpdate()
+		refresh := c.Query("refresh") == "1"
+		info, hasUpdate, err := updater.CheckUpdateWithRefresh(refresh)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 			return

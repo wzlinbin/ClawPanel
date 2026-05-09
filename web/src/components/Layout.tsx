@@ -286,7 +286,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   const loadPanelUpdateSummary = useCallback(() => {
     if (document.hidden) return;
     setPanelUpdate(prev => ({ ...prev, loading: !prev.currentVersion, checking: true, error: undefined }));
-    Promise.all([api.getPanelVersion(), api.checkPanelUpdate()]).then(([versionRes, updateRes]) => {
+    Promise.all([api.getPanelVersion(), api.checkPanelUpdate(true)]).then(([versionRes, updateRes]) => {
       if (!versionRes?.ok) {
         setPanelUpdate(prev => ({
           ...prev,
