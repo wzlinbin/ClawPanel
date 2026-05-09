@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # ============================================================
 # ClawPanel 二进制一键安装脚本（Linux/macOS）
-# 用途：直接下载 GitHub Release 中固定命名的 Linux 二进制文件并安装为系统服务。
+# 用途：自动解析最新 pro-v* GitHub Release 中固定命名的 Linux 二进制文件并安装为系统服务。
 #
 # 推荐用法：
 #   curl -fsSL https://raw.githubusercontent.com/wzlinbin/ClawPanel/main/scripts/install-source.sh | sudo bash
 #
 # 可选环境变量：
-#   RELEASE_URL=https://github.com/wzlinbin/ClawPanel/releases/download/latest/clawpanel
+#   RELEASE_URL=https://github.com/wzlinbin/ClawPanel/releases/download/pro-v5.5.7/clawpanel
+#   GITHUB_RELEASES_API=https://api.github.com/repos/wzlinbin/ClawPanel/releases?per_page=20
+#   GITHUB_TAG_PREFIX=pro-v
 #   INSTALL_DIR=/opt/clawpanel
 #   DATA_DIR=/opt/clawpanel/data
 #   PORT=19527
@@ -20,7 +22,9 @@ set -Eeuo pipefail
 
 BINARY_NAME="clawpanel"
 SERVICE_NAME="${SERVICE_NAME:-clawpanel}"
-RELEASE_URL="${RELEASE_URL:-https://github.com/wzlinbin/ClawPanel/releases/download/latest/clawpanel}"
+RELEASE_URL="${RELEASE_URL:-}"
+GITHUB_RELEASES_API="${GITHUB_RELEASES_API:-https://api.github.com/repos/wzlinbin/ClawPanel/releases?per_page=20}"
+GITHUB_TAG_PREFIX="${GITHUB_TAG_PREFIX:-pro-v}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/clawpanel}"
 DATA_DIR="${DATA_DIR:-${INSTALL_DIR}/data}"
 PORT="${PORT:-${CLAWPANEL_PORT:-19527}}"
@@ -96,6 +100,46 @@ require_download_tool() {
   err "缺少下载工具：请先安装 curl 或 wget 后重试。"
 }
 
+fetch_text() {
+  local url="$1"
+  if command -v curl >/dev/null 2>&1; then
+    curl --connect-timeout 10 --max-time 60 --retry 2 --retry-delay 2 --retry-connrefused -fsSL "$url"
+  else
+    wget -T 60 --tries=2 -qO- "$url"
+  fi
+}
+
+resolve_latest_release_url() {
+  if [[ -n "${RELEASE_URL:-}" ]]; then
+    echo "$RELEASE_URL"
+    return
+  fi
+
+  command -v python3 >/dev/null 2>&1 || err "自动解析最新 Release 需要 python3。也可以通过 RELEASE_URL=... 手动指定下载地址。"
+
+  local releases_json
+  releases_json="$(fetch_text "$GITHUB_RELEASES_API")"
+  python3 -c '
+import json
+import sys
+
+prefix = sys.argv[1]
+binary_name = sys.argv[2]
+releases = json.load(sys.stdin)
+
+for release in releases:
+    tag = release.get("tag_name", "")
+    if release.get("draft") or release.get("prerelease") or not tag.startswith(prefix):
+        continue
+    for asset in release.get("assets", []):
+        if asset.get("name") == binary_name and asset.get("browser_download_url"):
+            print(asset["browser_download_url"])
+            raise SystemExit(0)
+
+raise SystemExit("未找到可用的正式版 Release 资产：%s" % binary_name)
+' "$GITHUB_TAG_PREFIX" "$BINARY_NAME" <<< "$releases_json"
+}
+
 download_file() {
   local url="$1"
   local dest="$2"
@@ -149,6 +193,7 @@ validate_service_user() {
 download_binary() {
   BUILD_ROOT="$(mktemp -d)"
   DOWNLOADED_BINARY="${BUILD_ROOT}/${BINARY_NAME}"
+  RELEASE_URL="$(resolve_latest_release_url)"
   log "下载二进制：${RELEASE_URL}"
   download_file "$RELEASE_URL" "$DOWNLOADED_BINARY"
   [[ -s "$DOWNLOADED_BINARY" ]] || err "下载失败：未生成有效二进制文件。"
