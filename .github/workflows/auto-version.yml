@@ -1,0 +1,69 @@
+# 自动版本自增：推送 main 后递增 Makefile 中的 PRO_VERSION patch 位并提交回仓库。
+name: Auto Version Bump
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-version-bump-main
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump PRO_VERSION
+    if: github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip version]')
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump patch version
+        id: bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current="$(awk '$1 == "PRO_VERSION" { print $3; exit }' Makefile)"
+          if [[ ! "${current}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid PRO_VERSION: ${current}" >&2
+            exit 1
+          fi
+
+          IFS=. read -r major minor patch <<< "${current}"
+          next="${major}.${minor}.$((patch + 1))"
+
+          python3 - <<PY
+          from pathlib import Path
+          path = Path('Makefile')
+          text = path.read_text()
+          text = text.replace('PRO_VERSION ?= ${current}', 'PRO_VERSION ?= ${next}', 1)
+          path.write_text(text)
+          PY
+
+          echo "current=${current}" >> "${GITHUB_OUTPUT}"
+          echo "next=${next}" >> "${GITHUB_OUTPUT}"
+
+      - name: Commit version bump
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- Makefile; then
+            echo "No version change to commit"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Makefile
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.next }} [skip version]"
+          git push

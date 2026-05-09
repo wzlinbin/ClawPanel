@@ -233,14 +233,11 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   }, [location.pathname]);
   const [tasks, setTasks] = useState<TaskInfo[]>([]);
   const [taskLogs, setTaskLogs] = useState<Record<string, string[]>>({});
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [panelSettingsOpen, setPanelSettingsOpen] = useState(false);
   const [hermesOverview, setHermesOverview] = useState<any | null>(null);
   const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; amount?: number; error?: string; detail?: string }>({ loading: true });
   const [panelUpdate, setPanelUpdate] = useState<PanelUpdateSummary>({ loading: true, checking: false, navigating: false });
-  const searchRef = useRef<HTMLDivElement | null>(null);
   const profileRef = useRef<HTMLDivElement | null>(null);
   const isHermesBoard = location.pathname === '/hermes' || location.pathname.startsWith('/hermes/');
 
@@ -501,9 +498,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (searchRef.current && !searchRef.current.contains(target)) {
-        setSearchOpen(false);
-      }
       if (profileRef.current && !profileRef.current.contains(target)) {
         setProfileOpen(false);
       }
@@ -526,51 +520,11 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     setLocale(locale === 'zh-CN' ? 'en' : 'zh-CN');
   };
 
-  const commandItems = useMemo(() => [
-    { label: '仪表盘', keywords: ['dashboard', 'home', '首页', '仪表盘'], path: '/' },
-    { label: locale === 'zh-CN' ? 'Hermes 概览' : 'Hermes Overview', keywords: ['hermes', 'hermes board', 'nous', 'agent', '运行时'], path: '/hermes' },
-    { label: locale === 'zh-CN' ? 'Hermes 健康' : 'Hermes Health', keywords: ['hermes health', 'doctor', 'check', '诊断', '健康检查'], path: '/hermes/health' },
-    { label: locale === 'zh-CN' ? 'Hermes 平台' : 'Hermes Platforms', keywords: ['hermes platform', 'gateway', 'telegram', 'discord', 'slack', '平台'], path: '/hermes/platforms' },
-    { label: locale === 'zh-CN' ? 'Hermes 日志' : 'Hermes Logs', keywords: ['hermes logs', 'gateway log', 'log tail', '日志', 'gateway.error.log'], path: '/hermes/logs' },
-    { label: locale === 'zh-CN' ? 'Hermes 动作' : 'Hermes Actions', keywords: ['hermes action', 'doctor', 'update', 'gateway restart', '动作'], path: '/hermes/actions' },
-    { label: locale === 'zh-CN' ? 'Hermes 任务' : 'Hermes Tasks', keywords: ['hermes task', 'tasks', 'ledger', '任务', '后台任务'], path: '/hermes/tasks' },
-    { label: locale === 'zh-CN' ? 'Hermes 会话' : 'Hermes Sessions', keywords: ['hermes sessions', 'conversation', 'history', '会话', '历史'], path: '/hermes/sessions' },
-    { label: locale === 'zh-CN' ? 'Hermes 人格与路由' : 'Hermes Personality & Routing', keywords: ['hermes personality', 'profiles', 'routing', 'soul', 'profile', '路由', '人格'], path: '/hermes/personality' },
-    { label: locale === 'zh-CN' ? 'Hermes 配置' : 'Hermes Config', keywords: ['hermes config', 'hermes setup', '配置', 'setup'], path: '/hermes/config' },
-    { label: locale === 'zh-CN' ? '模型配置' : 'Model Config', keywords: ['config', 'settings', '系统配置', '模型配置'], path: '/config' },
-    { label: locale === 'zh-CN' ? '面板聊天' : 'Panel Chat', keywords: ['chat', 'panel chat', '对话', '聊天', '本地聊天'], path: '/chat' },
-    { label: '通道配置 - QQ个人号', keywords: ['qq', 'napcat', 'qq个人号', 'qq personal'], path: '/channels?channel=qq' },
-    { label: '通道配置 - 飞书', keywords: ['feishu', 'lark', '飞书'], path: '/channels?channel=feishu' },
-    { label: '通道配置 - QQ官方机器人', keywords: ['qqbot', 'qq官方', 'qq 官方机器人'], path: '/channels?channel=qqbot' },
-    { label: '通道配置 - Matrix', keywords: ['matrix'], path: '/channels?channel=matrix' },
-    { label: '通道配置 - Mattermost', keywords: ['mattermost'], path: '/channels?channel=mattermost' },
-    { label: '通道配置 - LINE', keywords: ['line'], path: '/channels?channel=line' },
-    { label: '通道配置 - Microsoft Teams', keywords: ['msteams', 'teams'], path: '/channels?channel=msteams' },
-    { label: '通道配置 - Twitch', keywords: ['twitch'], path: '/channels?channel=twitch' },
-    { label: '通道配置 - WhatsApp', keywords: ['whatsapp'], path: '/channels?channel=whatsapp' },
-    { label: '技能中心', keywords: ['skills', 'skill', '技能'], path: '/skills' },
-    { label: '插件中心', keywords: ['plugins', 'plugin', '插件'], path: '/plugins' },
-    ...(enableAgents ? [{ label: locale === 'zh-CN' ? '智能体' : 'Agents', keywords: ['agent', 'agents', '智能体'], path: '/agents' }] : []),
-    { label: locale === 'zh-CN' ? '工作流中心' : 'Workflow Center', keywords: ['workflow', 'workflows', '流程', '工作流'], path: '/workflows' },
-    { label: locale === 'zh-CN' ? 'AI公司' : 'AI Company', keywords: ['company', 'ai company', '协作任务', '任务中心', '团队'], path: '/company' },
-    { label: '定时任务', keywords: ['cron', 'jobs', '定时任务'], path: '/cron' },
-    { label: locale === 'zh-CN' ? '后台任务' : 'Background Tasks', keywords: ['tasks', 'background tasks', '任务账本', '后台任务'], path: '/tasks' },
-  ], [enableAgents, locale]);
-
-  const searchResults = useMemo(() => searchQuery.trim()
-    ? commandItems.filter(item => {
-        const q = searchQuery.toLowerCase();
-        return item.label.toLowerCase().includes(q) || item.keywords.some(k => k.toLowerCase().includes(q));
-      }).slice(0, 8)
-    : commandItems.slice(0, 6), [commandItems, searchQuery]);
-
   const handleSearchGo = (path: string) => {
     try {
       localStorage.setItem(ACTIVE_AGENT_KEY, path === '/hermes' || path.startsWith('/hermes/') ? 'hermes' : 'openclaw');
     } catch {}
     navigate(path);
-    setSearchQuery('');
-    setSearchOpen(false);
     setOpen(false);
     setProfileOpen(false);
   };
@@ -800,22 +754,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               <button onClick={() => setOpen(true)} className="inline-flex items-center justify-center w-10 h-10 rounded-xl border border-slate-200 bg-white/90 text-slate-500 hover:text-slate-700 hover:bg-white transition-colors lg:hidden">
                 <Menu size={18} />
               </button>
-              <div ref={searchRef} className="relative z-[120] hidden xl:flex flex-col min-w-[360px] max-w-[520px]">
-                <div className="flex items-center gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-4 py-2.5">
-                <Search size={16} className="text-[var(--ui-faint)]" />
-                <input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} onKeyDown={(e) => { if (e.key === 'Enter' && searchResults[0]) handleSearchGo(searchResults[0].path); if (e.key === 'Escape') setSearchOpen(false); }} placeholder={locale === 'zh-CN' ? '搜索页面、功能或通道...' : 'Search pages, features, or channels...'} className="w-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-500" />
-                </div>
-                {searchOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-3 z-[140] overflow-hidden rounded-xl border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] shadow-[var(--ui-shadow-strong)]">
-                    {searchResults.length === 0 ? <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">未找到匹配页面</div> : searchResults.map(item => (
-                      <button key={item.path + item.label} onClick={() => handleSearchGo(item.path)} className="w-full text-left px-4 py-3 hover:bg-blue-50/70 dark:hover:bg-blue-900/20 transition-colors border-b last:border-b-0 border-blue-100/60 dark:border-slate-700/70">
-                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.label}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{item.path}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden min-w-[220px] rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-3 py-2 shadow-sm 2xl:block" title={panelUpdate.error || undefined}>
@@ -967,22 +905,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               {dark ? <Sun size={17} /> : <Moon size={17} />}
             </button>
             <MessageCenter tasks={tasks} taskLogs={taskLogs} onRefresh={loadTasks} mode="icon" />
-          </div>
-          <div ref={searchRef} className="relative mt-3">
-            <div className="flex items-center gap-3 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-4 py-3 shadow-sm">
-              <Search size={16} className="text-slate-400 dark:text-slate-500" />
-              <input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} onKeyDown={(e) => { if (e.key === 'Enter' && searchResults[0]) handleSearchGo(searchResults[0].path); if (e.key === 'Escape') setSearchOpen(false); }} placeholder={locale === 'zh-CN' ? '搜索页面、功能或通道...' : 'Search pages, features, or channels...'} className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-500" />
-            </div>
-            {searchOpen && (
-              <div className="absolute left-0 right-0 top-full z-[140] mt-3 overflow-hidden rounded-[24px] border border-blue-100/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(239,246,255,0.92))] shadow-[0_24px_60px_rgba(15,23,42,0.14)] backdrop-blur-xl dark:border-blue-800/30 dark:bg-[linear-gradient(145deg,rgba(12,24,42,0.98),rgba(30,64,175,0.16))]">
-                {searchResults.length === 0 ? <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-300">未找到匹配页面</div> : searchResults.map(item => (
-                  <button key={item.path + item.label} onClick={() => handleSearchGo(item.path)} className="w-full border-b border-blue-100/60 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-blue-50/70 dark:border-slate-700/70 dark:hover:bg-blue-900/20">
-                    <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.label}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{item.path}</div>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </header>
         {!isHermesBoard && openclawStatus?.configured && !runtime.healthy && (
