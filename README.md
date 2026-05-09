@@ -14,5 +14,5 @@ Get-Content Makefile -TotalCount 1
 git tag pro-v5.5.9
 git push origin pro-v5.5.9
 
-
+5、一键安装
 curl -fsSL https://raw.githubusercontent.com/wzlinbin/ClawPanel/main/scripts/install-source.sh | sudo bash
