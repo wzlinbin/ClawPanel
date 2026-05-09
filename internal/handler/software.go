@@ -977,7 +977,7 @@ func DetectOpenClawInstances(cfg *config.Config) gin.HandlerFunc {
 }
 
 // InstallSoftware 一键安装软件
-func InstallSoftware(cfg *config.Config, tm *taskman.Manager) gin.HandlerFunc {
+func InstallSoftware(cfg *config.Config, tm *taskman.Manager, pm *plugin.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			Software string `json:"software"`
@@ -1352,12 +1352,20 @@ if command -v openclaw >/dev/null 2>&1; then
 fi
 
 echo "📦 通过 OpenClaw 官方安装脚本安装..."
-curl -fsSL https://openclaw.ai/install.sh | bash
+curl -fsSL https://openclaw.ai/install.sh | OPENCLAW_NO_ONBOARD=1 bash -s -- --no-onboard
 
 export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
 if command -v openclaw >/dev/null 2>&1; then
   echo "✅ OpenClaw $(openclaw --version 2>/dev/null || echo installed) 安装完成"
   openclaw init 2>/dev/null || true
+  if openclaw daemon start >/dev/null 2>&1; then
+    echo "✅ OpenClaw daemon 已启动"
+  elif command -v nohup >/dev/null 2>&1; then
+    nohup openclaw gateway >/tmp/openclaw-gateway.log 2>&1 &
+    echo "✅ OpenClaw gateway 已在后台启动"
+  else
+    echo "⚠️ OpenClaw 已安装，请手动运行: openclaw gateway"
+  fi
   echo "✅ 全部完成"
   exit 0
 fi
@@ -1390,9 +1398,24 @@ set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 
+run_hermes_post_install() {
+  echo "⚙️ 运行 Hermes Setup..."
+  hermes setup
+
+  echo "📦 安装 Hermes Gateway..."
+  hermes gateway install
+
+  echo "🚀 启动 Hermes Gateway..."
+  hermes gateway start
+
+  echo "✅ Hermes 初始化与消息网关启动完成"
+}
+
 echo "📦 安装 Hermes Agent..."
 if command -v hermes >/dev/null 2>&1; then
   echo "⚠️ Hermes 已安装: $(hermes --version 2>/dev/null || echo installed)"
+  run_hermes_post_install
+  echo "✅ 全部完成"
   exit 0
 fi
 
@@ -1401,15 +1424,19 @@ curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scri
 export PATH="$HOME/.local/bin:$PATH"
 if command -v hermes >/dev/null 2>&1; then
   echo "✅ Hermes $(hermes --version 2>/dev/null || echo installed) 安装完成"
-  echo "ℹ️ 下一步建议运行: hermes setup"
+  run_hermes_post_install
   echo "ℹ️ 如需从 OpenClaw 迁移，可运行: hermes claw migrate"
+  echo "✅ 全部完成"
   exit 0
 fi
 
 if [ -x "$HOME/.local/bin/hermes" ]; then
+  export PATH="$HOME/.local/bin:$PATH"
   echo "✅ Hermes 已安装到 $HOME/.local/bin/hermes"
-  "$HOME/.local/bin/hermes" --version 2>/dev/null || true
-  echo "⚠️ 当前 shell 可能尚未加载 ~/.local/bin 到 PATH"
+  hermes --version 2>/dev/null || true
+  run_hermes_post_install
+  echo "ℹ️ 如需从 OpenClaw 迁移，可运行: hermes claw migrate"
+  echo "✅ 全部完成"
   exit 0
 fi
 
@@ -1435,6 +1462,9 @@ exit 1
 				err = tm.RunScriptWithSudo(task, sudoPass, script)
 			} else {
 				err = tm.RunScript(task, script)
+			}
+			if err == nil && req.Software == "openclaw" {
+				err = installDefaultChannelPluginsAfterOpenClawInstall(pm, task.AppendLog)
 			}
 			tm.FinishTask(task, err)
 		}()
@@ -1462,6 +1492,36 @@ func GetPanelTaskDetail(tm *taskman.Manager) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"ok": true, "task": task})
 	}
+}
+
+func installDefaultChannelPluginsAfterOpenClawInstall(pm *plugin.Manager, logf func(string)) error {
+	if pm == nil {
+		return nil
+	}
+	var failures []string
+	for _, pluginID := range defaultOpenClawChannelPluginIDs() {
+		if logf != nil {
+			logf("📦 安装/更新通道插件: " + pluginID)
+		}
+		if pm.GetPlugin(pluginID) != nil {
+			if err := pm.Update(pluginID); err != nil {
+				failures = append(failures, fmt.Sprintf("%s: %v", pluginID, err))
+				continue
+			}
+			continue
+		}
+		if err := pm.InstallWithProgress(pluginID, "", logf); err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %v", pluginID, err))
+		}
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("部分通道插件安装/更新失败: %s", strings.Join(failures, "; "))
+	}
+	return nil
+}
+
+func defaultOpenClawChannelPluginIDs() []string {
+	return []string{"qq", "qqbot", "feishu", "wecom", "dingtalk"}
 }
 
 func getSudoPass(cfg *config.Config) string {

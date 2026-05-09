@@ -115,6 +115,55 @@ func TestHermesInstallScriptUsesRuntimeHomeFallback(t *testing.T) {
 	}
 }
 
+func TestOpenClawInstallScriptSkipsInteractiveOnboarding(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("software.go")
+	if err != nil {
+		t.Fatalf("read software.go: %v", err)
+	}
+	source := string(raw)
+	if !strings.Contains(source, `OPENCLAW_NO_ONBOARD=1 bash -s -- --no-onboard`) {
+		t.Fatalf("openclaw install script should skip interactive onboarding")
+	}
+	if !strings.Contains(source, `openclaw daemon start`) {
+		t.Fatalf("openclaw install script should try to start the daemon after install")
+	}
+}
+
+func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("software.go")
+	if err != nil {
+		t.Fatalf("read software.go: %v", err)
+	}
+	source := string(raw)
+	for _, want := range []string{
+		`run_hermes_post_install()`,
+		`hermes setup`,
+		`hermes gateway install`,
+		`hermes gateway start`,
+	} {
+		if !strings.Contains(source, want) {
+			t.Fatalf("hermes install script should contain %q", want)
+		}
+	}
+	if strings.Contains(source, `echo "ℹ️ 下一步建议运行: hermes setup"`) {
+		t.Fatalf("hermes install script should run setup instead of only suggesting it")
+	}
+}
+
+func TestDefaultOpenClawChannelPluginIDsIncludesAllChannelCards(t *testing.T) {
+	t.Parallel()
+
+	got := strings.Join(defaultOpenClawChannelPluginIDs(), ",")
+	want := "qq,qqbot,feishu,wecom,dingtalk"
+	if got != want {
+		t.Fatalf("default channel plugins = %q, want %q", got, want)
+	}
+}
+
 func TestSoftwareListPassesConfigToHermesDetection(t *testing.T) {
 	t.Parallel()
 

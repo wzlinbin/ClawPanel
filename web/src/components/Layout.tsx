@@ -21,6 +21,16 @@ interface RuntimeChannelSummary {
   connected: boolean;
 }
 
+interface PanelUpdateSummary {
+  loading: boolean;
+  checking: boolean;
+  navigating: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+  hasUpdate?: boolean;
+  error?: string;
+}
+
 const DISPLAY_CHANNEL_IDS = new Set([
   'qq', 'wechat', 'whatsapp', 'telegram', 'discord', 'irc', 'slack', 'signal', 'googlechat',
   'bluebubbles', 'imessage', 'webchat', 'feishu', 'qqbot', 'dingtalk', 'wecom', 'wecom-app',
@@ -229,6 +239,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   const [panelSettingsOpen, setPanelSettingsOpen] = useState(false);
   const [hermesOverview, setHermesOverview] = useState<any | null>(null);
   const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; amount?: number; error?: string; detail?: string }>({ loading: true });
+  const [panelUpdate, setPanelUpdate] = useState<PanelUpdateSummary>({ loading: true, checking: false, navigating: false });
   const searchRef = useRef<HTMLDivElement | null>(null);
   const profileRef = useRef<HTMLDivElement | null>(null);
   const isHermesBoard = location.pathname === '/hermes' || location.pathname.startsWith('/hermes/');
@@ -275,6 +286,90 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     };
   }, []);
 
+  const loadPanelUpdateSummary = useCallback(() => {
+    if (document.hidden) return;
+    setPanelUpdate(prev => ({ ...prev, loading: !prev.currentVersion, checking: true, error: undefined }));
+    Promise.all([api.getPanelVersion(), api.checkPanelUpdate()]).then(([versionRes, updateRes]) => {
+      if (!versionRes?.ok) {
+        setPanelUpdate(prev => ({
+          ...prev,
+          loading: false,
+          checking: false,
+          currentVersion: prev.currentVersion,
+          latestVersion: prev.latestVersion,
+          error: versionRes?.error || '版本获取失败',
+        }));
+        return;
+      }
+      const currentVersion = String(versionRes.version || versionRes.currentVersion || '');
+      if (!updateRes?.ok) {
+        setPanelUpdate(prev => ({
+          ...prev,
+          loading: false,
+          checking: false,
+          currentVersion,
+          latestVersion: currentVersion,
+          hasUpdate: false,
+          error: updateRes?.error || '更新检查失败',
+        }));
+        return;
+      }
+      setPanelUpdate(prev => ({
+        ...prev,
+        loading: false,
+        checking: false,
+        currentVersion,
+        latestVersion: String(updateRes.latestVersion || currentVersion),
+        hasUpdate: !!updateRes.hasUpdate,
+        error: undefined,
+      }));
+    }).catch((err: any) => {
+      setPanelUpdate(prev => ({
+        ...prev,
+        loading: false,
+        checking: false,
+        error: err?.message || '更新检查失败',
+      }));
+    });
+  }, []);
+
+  useEffect(() => {
+    loadPanelUpdateSummary();
+    const timer = setInterval(loadPanelUpdateSummary, 30 * 60 * 1000);
+    const onVisible = () => { if (!document.hidden) loadPanelUpdateSummary(); };
+    window.addEventListener('focus', loadPanelUpdateSummary);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', loadPanelUpdateSummary);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loadPanelUpdateSummary]);
+
+  const handlePanelUpdateClick = useCallback(async () => {
+    if (!panelUpdate.hasUpdate || panelUpdate.navigating) return;
+    setPanelUpdate(prev => ({ ...prev, navigating: true }));
+    try {
+      const r = await api.generateUpdateToken();
+      if (r?.ok && r.updaterURL) {
+        window.open(r.updaterURL, '_blank');
+      } else {
+        const error = r?.error || (locale === 'zh-CN' ? '生成更新令牌失败' : 'Failed to generate update token');
+        if (error.includes('认证令牌无效') || error.includes('未提供认证令牌')) {
+          localStorage.removeItem('admin-token');
+          window.alert(locale === 'zh-CN' ? '登录状态已过期，请重新登录后再试更新。' : 'Login expired. Please sign in again before updating.');
+          window.location.href = '/login';
+          return;
+        }
+        window.alert(error);
+      }
+    } catch (err: any) {
+      window.alert(err?.message || (locale === 'zh-CN' ? '打开更新页面失败' : 'Failed to open updater'));
+    } finally {
+      setPanelUpdate(prev => ({ ...prev, navigating: false }));
+    }
+  }, [locale, panelUpdate.hasUpdate, panelUpdate.navigating]);
+
   useEffect(() => {
 	if (!tasks.some(task => task.status === 'running' || task.status === 'pending')) return;
 	const timer = setInterval(() => {
@@ -306,6 +401,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
 
   const openClawNavItems = useMemo(() => [
     { to: '/', icon: LayoutDashboard, label: t.nav.dashboard },
+    { to: '/config', icon: Settings, label: t.nav.systemConfig },
     { to: '/chat', icon: MessageSquare, label: t.nav.panelChat },
     { to: '/channels', icon: Radio, label: t.nav.channels },
     { to: '/skills', icon: Sparkles, label: t.nav.skills },
@@ -314,27 +410,26 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { to: '/company', icon: BriefcaseBusiness, label: locale === 'zh-CN' ? 'AI公司' : 'AI Company' },
     { to: '/cron', icon: Clock, label: t.nav.cronJobs },
     { to: '/tasks', icon: Activity, label: locale === 'zh-CN' ? '后台任务' : 'Tasks' },
-    { to: '/config', icon: Settings, label: t.nav.systemConfig },
   ], [enableAgents, locale, t]);
 
   const hermesNavItems = useMemo(() => [
     { to: '/hermes', icon: Brain, label: locale === 'zh-CN' ? '概览' : 'Overview' },
+    { to: '/hermes/config', icon: Settings, label: locale === 'zh-CN' ? '模型配置' : 'Config' },
     { to: '/hermes/platforms', icon: Radio, label: locale === 'zh-CN' ? '通道管理' : 'Platforms' },
     { to: '/hermes/tasks', icon: Activity, label: locale === 'zh-CN' ? '任务' : 'Tasks' },
     { to: '/hermes/sessions', icon: MessageSquare, label: locale === 'zh-CN' ? '会话' : 'Sessions' },
     { to: '/hermes/personality', icon: Bot, label: locale === 'zh-CN' ? '人格与路由' : 'Personality & Routing' },
     { to: '/hermes/health', icon: Bell, label: locale === 'zh-CN' ? '健康' : 'Health' },
-    { to: '/hermes/config', icon: Settings, label: locale === 'zh-CN' ? '模型配置' : 'Config' },
     { to: '/hermes/logs', icon: ScrollText, label: locale === 'zh-CN' ? '日志' : 'Logs' },
   ], [locale]);
 
   const openClawMobileNavItems = useMemo(() => [
     { to: '/', icon: LayoutDashboard, label: t.nav.dashboard },
+    { to: '/config', icon: Settings, label: t.nav.systemConfig },
     { to: '/chat', icon: MessageSquare, label: t.nav.panelChat },
     { to: '/channels', icon: Radio, label: t.nav.channels },
     ...(enableAgents ? [{ to: '/agents', icon: Bot, label: locale === 'zh-CN' ? '智能体' : 'Agents' }] : [{ to: '/plugins', icon: Puzzle, label: locale === 'zh-CN' ? '插件' : 'Plugins' }]),
     { to: '/company', icon: BriefcaseBusiness, label: locale === 'zh-CN' ? 'AI公司' : 'Company' },
-    { to: '/config', icon: Settings, label: t.nav.systemConfig },
   ], [enableAgents, locale, t]);
 
   const hermesMobileNavItems = useMemo(() => [
@@ -442,6 +537,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { label: locale === 'zh-CN' ? 'Hermes 会话' : 'Hermes Sessions', keywords: ['hermes sessions', 'conversation', 'history', '会话', '历史'], path: '/hermes/sessions' },
     { label: locale === 'zh-CN' ? 'Hermes 人格与路由' : 'Hermes Personality & Routing', keywords: ['hermes personality', 'profiles', 'routing', 'soul', 'profile', '路由', '人格'], path: '/hermes/personality' },
     { label: locale === 'zh-CN' ? 'Hermes 配置' : 'Hermes Config', keywords: ['hermes config', 'hermes setup', '配置', 'setup'], path: '/hermes/config' },
+    { label: locale === 'zh-CN' ? '模型配置' : 'Model Config', keywords: ['config', 'settings', '系统配置', '模型配置'], path: '/config' },
     { label: locale === 'zh-CN' ? '面板聊天' : 'Panel Chat', keywords: ['chat', 'panel chat', '对话', '聊天', '本地聊天'], path: '/chat' },
     { label: '通道配置 - QQ个人号', keywords: ['qq', 'napcat', 'qq个人号', 'qq personal'], path: '/channels?channel=qq' },
     { label: '通道配置 - 飞书', keywords: ['feishu', 'lark', '飞书'], path: '/channels?channel=feishu' },
@@ -459,7 +555,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { label: locale === 'zh-CN' ? 'AI公司' : 'AI Company', keywords: ['company', 'ai company', '协作任务', '任务中心', '团队'], path: '/company' },
     { label: '定时任务', keywords: ['cron', 'jobs', '定时任务'], path: '/cron' },
     { label: locale === 'zh-CN' ? '后台任务' : 'Background Tasks', keywords: ['tasks', 'background tasks', '任务账本', '后台任务'], path: '/tasks' },
-    { label: '系统配置', keywords: ['config', 'settings', '系统配置'], path: '/config' },
   ], [enableAgents, locale]);
 
   const searchResults = useMemo(() => searchQuery.trim()
@@ -723,6 +818,45 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <div className="hidden min-w-[220px] rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-3 py-2 shadow-sm 2xl:block" title={panelUpdate.error || undefined}>
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    panelUpdate.error
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-300'
+                      : panelUpdate.hasUpdate
+                        ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300'
+                        : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
+                  }`}>
+                    {panelUpdate.checking ? <RefreshCw size={16} className="animate-spin" /> : <GitBranch size={16} />}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ui-muted)]">
+                      {locale === 'zh-CN' ? '系统版本' : 'System Version'}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-1 text-sm font-black">
+                      <span className="truncate font-mono text-[var(--ui-heading)]">
+                        {panelUpdate.loading ? '...' : (panelUpdate.currentVersion || '--')}
+                      </span>
+                      <span className="text-[var(--ui-faint)]">→</span>
+                      {panelUpdate.hasUpdate ? (
+                        <button
+                          type="button"
+                          onClick={handlePanelUpdateClick}
+                          disabled={panelUpdate.navigating}
+                          className="truncate font-mono text-blue-600 underline-offset-2 hover:underline disabled:opacity-60 dark:text-blue-300"
+                          title={locale === 'zh-CN' ? '点击前往在线更新 ClawPanel 管理系统' : 'Click to update ClawPanel online'}
+                        >
+                          {panelUpdate.navigating ? '...' : (panelUpdate.latestVersion || '--')}
+                        </button>
+                      ) : (
+                        <span className={`${panelUpdate.error ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-400'} truncate font-mono`}>
+                          {panelUpdate.latestVersion || panelUpdate.currentVersion || '--'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="hidden min-w-[180px] rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-3 py-2 shadow-sm 2xl:block">
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${

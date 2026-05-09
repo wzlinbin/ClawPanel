@@ -487,7 +487,7 @@ func runServer(stopCh chan struct{}) {
 			// 软件环境 & 安装任务
 			auth.GET("/software/list", handler.GetSoftwareList(cfg))
 			auth.GET("/software/openclaw-instances", handler.DetectOpenClawInstances(cfg))
-			auth.POST("/software/install", handler.InstallSoftware(cfg, taskMgr))
+			auth.POST("/software/install", handler.InstallSoftware(cfg, taskMgr, pluginMgr))
 			auth.GET("/panel/tasks", handler.GetPanelTasks(taskMgr))
 			auth.GET("/panel/tasks/:id", handler.GetPanelTaskDetail(taskMgr))
 

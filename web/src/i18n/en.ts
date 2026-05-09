@@ -65,7 +65,7 @@ const en: Translations = {
     agents: 'Agents',
     cronJobs: 'Cron Jobs',
     workspace: 'Workspace',
-    systemConfig: 'System Config',
+    systemConfig: 'Model Config',
     runningStatus: 'Status',
     lightMode: 'Light Mode',
     darkMode: 'Dark Mode',
@@ -397,8 +397,8 @@ const en: Translations = {
   },
 
   sysConfig: {
-    title: 'System Config',
-    subtitle: 'OpenClaw advanced configuration',
+    title: 'Model Config',
+    subtitle: 'OpenClaw model configuration',
     tabModels: 'Models',
     tabIdentity: 'Identity & Messages',
     tabGeneral: 'General',

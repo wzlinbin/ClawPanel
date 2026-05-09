@@ -13,10 +13,6 @@ import { useI18n } from '../i18n';
 
 const FIXED_DEFAULT_PROVIDER_ID = 'api2cn';
 const FIXED_DEFAULT_PROVIDER_BASE_URL = 'https://api.api2cn.com/v1';
-const FIXED_DEFAULT_PROVIDER_HEADERS: Record<string, string> = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36',
-};
-
 const KNOWN_PROVIDERS: { id: string; name: string; nameZh?: string; baseUrl: string; apiType?: string; apiKeyUrl: string; models: string[]; category: 'cn' | 'intl' | 'agg' }[] = [
   // === 国内主流 ===
   { id: 'volcengine', name: 'Volcengine Ark', nameZh: '火山方舟（字节）', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', apiKeyUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey', models: ['doubao-pro-256k', 'doubao-lite-128k', 'deepseek-v3', 'deepseek-r1'], category: 'cn' },
@@ -616,7 +612,7 @@ export default function SystemConfig() {
       updateConfig((clone: any) => {
         const provider = clone.models.providers[pid];
         provider.baseUrl = FIXED_DEFAULT_PROVIDER_BASE_URL;
-        provider.headers = { ...FIXED_DEFAULT_PROVIDER_HEADERS };
+        delete provider.headers;
         provider.models = models.map((id: string) => ({ id, name: id, contextWindow: 128000, maxTokens: 8192 }));
       });
       setExpandedModel(null);
@@ -690,7 +686,12 @@ export default function SystemConfig() {
       Object.values(currentProviders).forEach((provider: any) => {
         if (!provider || typeof provider !== 'object' || Array.isArray(provider)) return;
         provider.baseUrl = FIXED_DEFAULT_PROVIDER_BASE_URL;
-        provider.headers = { ...FIXED_DEFAULT_PROVIDER_HEADERS };
+        delete provider.headers;
+        if (Array.isArray(provider.models)) {
+          provider.models.forEach((model: any) => {
+            if (model && typeof model === 'object' && !Array.isArray(model)) delete model.headers;
+          });
+        }
         if (!provider.api) provider.api = 'openai-completions';
       });
       const currentIds = Object.keys(currentProviders);
@@ -1088,7 +1089,7 @@ export default function SystemConfig() {
                 updateConfig((clone: any) => {
                   if (!clone.models) clone.models = {};
                   if (!clone.models.providers) clone.models.providers = {};
-                  clone.models.providers[FIXED_DEFAULT_PROVIDER_ID] = { baseUrl: FIXED_DEFAULT_PROVIDER_BASE_URL, apiKey: '', api: 'openai-completions', headers: { ...FIXED_DEFAULT_PROVIDER_HEADERS }, models: [createEmptyProviderModel()] };
+                  clone.models.providers[FIXED_DEFAULT_PROVIDER_ID] = { baseUrl: FIXED_DEFAULT_PROVIDER_BASE_URL, apiKey: '', api: 'openai-completions', models: [createEmptyProviderModel()] };
                 });
               }} disabled={!!providers[FIXED_DEFAULT_PROVIDER_ID]} className={`${modern ? 'page-modern-action px-3 py-1.5 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed' : 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'}`}>
                 <Plus size={14} />{i18n.sysConfig.addProvider}
@@ -1170,17 +1171,6 @@ export default function SystemConfig() {
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">备注 (可选)</label>
                       <input value={prov._note || ''} onChange={e => setVal(`models.providers.${pid}._note`, e.target.value)}
                         placeholder="例: 公司账号 / 个人测试" className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">自定义请求头 (Custom Headers)</label>
-                      <div className="space-y-2">
-                        {Object.entries(FIXED_DEFAULT_PROVIDER_HEADERS).map(([hk, hv]) => (
-                          <div key={hk} className="flex gap-2 items-center">
-                            <input value={hk} readOnly className="w-1/3 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" />
-                            <input value={String(hv)} readOnly className="flex-1 px-2.5 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" />
-                          </div>
-                        ))}
-                      </div>
                     </div>
                   </div>
                   <ProviderModelListFetch pid={pid} prov={prov} loading={!!modelListLoading[pid]} result={modelListResults[pid]} onFetch={() => fetchProviderModels(pid, prov)} />
@@ -1283,35 +1273,6 @@ export default function SystemConfig() {
                                     }} placeholder="0.00" className="w-full px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
                                   </div>
                                 ))}
-                              </div>
-                            </div>
-
-                            {/* Model-level headers */}
-                            <div>
-                              <label className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider block mb-2">模型请求头 (Model Headers)</label>
-                              <div className="space-y-2">
-                                {Object.entries(mObj.headers || {}).map(([hk, hv]) => (
-                                  <div key={hk} className="flex gap-2 items-center">
-                                    <input value={hk} readOnly className="w-1/3 px-2 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" />
-                                    <input value={String(hv)} onChange={e => {
-                                      const headers = { ...(mObj.headers || {}), [hk]: e.target.value };
-                                      updateModel('headers', headers);
-                                    }} className="flex-1 px-2 py-1.5 text-xs font-mono border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
-                                    <button onClick={() => {
-                                      const headers = { ...(mObj.headers || {}) };
-                                      delete headers[hk];
-                                      updateModel('headers', Object.keys(headers).length > 0 ? headers : undefined);
-                                    }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                                  </div>
-                                ))}
-                                <button onClick={() => {
-                                  const key = prompt('Header name:');
-                                  if (!key?.trim()) return;
-                                  const headers = { ...(mObj.headers || {}), [key.trim()]: '' };
-                                  updateModel('headers', headers);
-                                }} className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 border-dashed hover:border-solid transition-all flex items-center gap-1.5">
-                                  <Plus size={12} /> 添加请求头
-                                </button>
                               </div>
                             </div>
 

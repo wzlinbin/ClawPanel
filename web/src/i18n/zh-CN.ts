@@ -65,7 +65,7 @@ const zhCN: Translations = {
     agents: '智能体',
     cronJobs: '定时任务',
     workspace: '工作区',
-    systemConfig: '系统配置',
+    systemConfig: '模型配置',
     runningStatus: '运行状态',
     lightMode: '浅色模式',
     darkMode: '深色模式',
@@ -397,8 +397,8 @@ const zhCN: Translations = {
   },
 
   sysConfig: {
-    title: '系统配置',
-    subtitle: 'OpenClaw 系统配置',
+    title: '模型配置',
+    subtitle: 'OpenClaw 模型配置',
     tabModels: '模型配置',
     tabIdentity: '身份 & 消息',
     tabGeneral: '通用配置',

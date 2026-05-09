@@ -20,7 +20,6 @@ interface OpenClawProvider {
   baseUrl?: string;
   apiKey?: string;
   api?: string;
-  headers?: Record<string, string>;
   _note?: string;
   models?: ProviderModel[];
 }
@@ -32,9 +31,6 @@ interface OpenClawModels {
 const API2CN_PROVIDER_ID = 'api2cn';
 const API2CN_BASE_URL = 'https://api.api2cn.com';
 const API2CN_MODEL_LIST_BASE_URL = 'https://api.api2cn.com/v1';
-const API2CN_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36';
-const API2CN_HEADERS: Record<string, string> = { 'User-Agent': API2CN_USER_AGENT };
-
 const normalizeProviderModels = (models?: ProviderModel[]) => {
   const values = (models || [])
     .map(model => (typeof model === 'string' ? model : model?.id || model?.name || ''))
@@ -62,13 +58,16 @@ const getModelApiKey = (model?: Record<string, any>, provider?: OpenClawProvider
   return String(model?.api_key || model?.apiKey || provider?.apiKey || '').trim();
 };
 
-const buildModelConfig = (model: Record<string, any> | undefined, apiKey: string) => ({
-  ...removeLegacyModelKeys(model || {}),
-  base_url: API2CN_BASE_URL,
-  api_key: apiKey,
-  provider: String(model?.provider || 'auto').trim() || 'auto',
-  headers: { ...API2CN_HEADERS },
-});
+const buildModelConfig = (model: Record<string, any> | undefined, apiKey: string) => {
+  const next = {
+    ...removeLegacyModelKeys(model || {}),
+    base_url: API2CN_BASE_URL,
+    api_key: apiKey,
+    provider: String(model?.provider || 'auto').trim() || 'auto',
+  };
+  delete (next as Record<string, any>).headers;
+  return next;
+};
 
 export default function HermesConfig() {
   const { locale } = useI18n();
@@ -153,11 +152,14 @@ export default function HermesConfig() {
         providers: {
           ...(prev.providers || {}),
           [API2CN_PROVIDER_ID]: {
-            ...(prev.providers?.[API2CN_PROVIDER_ID] || {}),
+            ...(() => {
+              const provider: Record<string, any> = { ...(prev.providers?.[API2CN_PROVIDER_ID] || {}) };
+              delete provider.headers;
+              return provider;
+            })(),
             baseUrl: API2CN_BASE_URL,
             apiKey,
             api: 'openai-completions',
-            headers: { ...API2CN_HEADERS },
             models,
           },
         },
@@ -325,17 +327,6 @@ export default function HermesConfig() {
                 placeholder="4096"
                 className="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3.5 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-900/40"
               />
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">自定义请求头（Custom Headers）</label>
-            <div className="space-y-2">
-              {Object.entries(API2CN_HEADERS).map(([key, value]) => (
-                <div key={key} className="flex gap-2 items-center">
-                  <input value={key} readOnly className="w-1/3 rounded-lg border border-gray-200 bg-gray-100 px-2.5 py-1.5 text-xs font-mono text-gray-500 outline-none cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400" />
-                  <input value={String(value)} readOnly className="flex-1 rounded-lg border border-gray-200 bg-gray-100 px-2.5 py-1.5 text-xs font-mono text-gray-500 outline-none cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400" />
-                </div>
-              ))}
             </div>
           </div>
         </div>

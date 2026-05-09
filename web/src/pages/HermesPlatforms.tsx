@@ -862,8 +862,8 @@ export default function HermesPlatforms() {
               <TerminalSquare size={16} className="text-blue-500" />
               {locale === 'zh-CN' ? '消息渠道批准' : 'Pairing Approval'}
             </div>
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              {locale === 'zh-CN' ? '批准 Hermes 消息渠道配对请求' : 'Approve a Hermes messaging channel pairing request'}
+            <div className={`mt-2 text-sm ${locale === 'zh-CN' ? 'font-bold text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>
+              {locale === 'zh-CN' ? '请注意，消息渠道启用后，根据Hermes的安全规则，需要执行设备匹配，请查看消息渠道收到的匹配码，填写后点击 提交批准' : 'Approve a Hermes messaging channel pairing request'}
             </div>
           </div>
           <button

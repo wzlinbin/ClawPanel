@@ -231,7 +231,7 @@ export default function HermesOverview() {
       <div className={`${modern ? 'page-modern-header' : 'flex items-center justify-between'}`}>
         <div>
           <h2 className={`${modern ? 'page-modern-title text-xl' : 'text-xl font-bold text-gray-900 dark:text-white'}`}>Hermes</h2>
-          <p className={`${modern ? 'page-modern-subtitle mt-1 text-sm' : 'text-sm text-gray-500 mt-1'}`}>
+          <p className={`${modern ? 'page-modern-subtitle mt-1 text-sm' : 'text-sm text-gray-500 mt-1'} ${locale === 'zh-CN' ? '!font-bold !text-red-600 dark:!text-red-400' : ''}`}>
             {locale === 'zh-CN'
               ? '首次下载安装Hermes后，请执行Hermes Setup，启用消息通道后，记得要Hermes Gateway Install并启动消息网关'
               : 'Hermes is integrated as an independent agent console alongside OpenClaw, with status, platforms, logs, tasks, actions, and profiles managed here.'}

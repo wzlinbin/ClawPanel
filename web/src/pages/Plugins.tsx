@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   Puzzle, Download, Trash2, RefreshCw, Settings2, Power, PowerOff,
-  Search, Filter, ChevronRight, ExternalLink, AlertCircle, Check,
+  Filter, ChevronRight, ExternalLink, AlertCircle, Check,
   FileText, Package, Tag, User, Globe, ArrowUpCircle, Terminal,
   Loader2, X,
 } from 'lucide-react';
@@ -56,7 +56,6 @@ export default function Plugins() {
   const [registry, setRegistry] = useState<RegistryPlugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [tab, setTab] = useState<'market' | 'installed'>('market');
   const [selectedPlugin, setSelectedPlugin] = useState<string | null>(null);
@@ -199,25 +198,10 @@ export default function Plugins() {
 
   const filteredRegistry = registry.filter(p => {
     if (category !== 'all' && p.category !== category) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.id.toLowerCase().includes(q) ||
-        (p.description || '').toLowerCase().includes(q) ||
-        (p.author || '').toLowerCase().includes(q)
-      );
-    }
     return true;
   });
 
-  const filteredInstalled = installed.filter(p => {
-    if (search) {
-      const q = search.toLowerCase();
-      return p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const filteredInstalled = installed;
 
   return (
     <div className={`space-y-6 ${modern ? 'page-modern' : ''}`}>
@@ -265,7 +249,7 @@ export default function Plugins() {
         </div>
       )}
 
-      {/* Tabs + Search */}
+      {/* Tabs */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className={`${modern ? 'inline-flex flex-wrap rounded-xl p-1 border border-blue-100/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.78),rgba(239,246,255,0.62))] dark:bg-[linear-gradient(145deg,rgba(10,20,36,0.82),rgba(30,64,175,0.1))] dark:border-blue-800/20 shadow-sm backdrop-blur-xl' : 'flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5'}`}>
           <button
@@ -293,16 +277,6 @@ export default function Plugins() {
         </div>
 
         <div className="flex-1 flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="搜索插件..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-            />
-          </div>
-
           {tab === 'market' && (
             <div className="flex items-center gap-1 flex-wrap">
               {CATEGORIES.map(cat => (
@@ -337,7 +311,7 @@ export default function Plugins() {
           {filteredRegistry.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-400">
               <Package size={48} className="mx-auto mb-3 opacity-50" />
-              <p className="text-sm">{search ? '未找到匹配的插件' : '插件仓库为空，点击「刷新仓库」获取最新列表'}</p>
+              <p className="text-sm">插件仓库为空，点击「刷新仓库」获取最新列表</p>
             </div>
           ) : filteredRegistry.map(p => {
             const isInstalled = installedIds.has(p.id);
@@ -394,7 +368,7 @@ export default function Plugins() {
           {filteredInstalled.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <Package size={48} className="mx-auto mb-3 opacity-50" />
-              <p className="text-sm">{search ? '未找到匹配的已安装插件' : '暂无已安装的插件'}</p>
+              <p className="text-sm">暂无已安装的插件</p>
               <button onClick={() => setTab('market')} className="mt-3 text-xs text-violet-500 hover:underline">
                 前往插件市场
               </button>
