@@ -1132,7 +1132,7 @@ export default function SystemConfig() {
                     <div>
                       <div className="mb-1.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                         <label className="text-sm font-black leading-snug text-red-600 dark:text-red-400 md:text-base">
-                          在本站购买相关订阅套餐后，需在API密钥中设置对应的订阅组，并复制API KEYI填写到此处。
+                          在本站购买相关订阅套餐后，需在API密钥中设置对应的订阅组，并复制API KEY填写到此处。
                         </label>
                         {(() => {
                           const matched = KNOWN_PROVIDERS.find(kp => FIXED_DEFAULT_PROVIDER_BASE_URL.includes(kp.baseUrl.replace('https://', '').split('/')[0]));
