@@ -97,37 +97,11 @@ jobs:
           path: web/dist/
           retention-days: 3
 
-  # 在稳定可用的 runner 上构建发布二进制。
-  # 其中 darwin/amd64 改为在 Linux runner 上交叉编译，避免 macos-13 runner 不可用导致整条发布链路中断。
+  # 只构建 Linux amd64 二进制，供一键安装脚本下载固定资产 clawpanel。
   build-binaries:
-    name: Build ${{ matrix.os }}-${{ matrix.arch }}
+    name: Build linux-amd64
     needs: [prepare, build-frontend]
-    runs-on: ${{ matrix.runner }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-24.04
-            os: linux
-            arch: amd64
-            ext: ''
-          - runner: ubuntu-24.04-arm
-            os: linux
-            arch: arm64
-            ext: ''
-          - runner: ubuntu-24.04
-            os: darwin
-            arch: amd64
-            ext: ''
-          - runner: macos-15
-            os: darwin
-            arch: arm64
-            ext: ''
-          - runner: windows-2025
-            os: windows
-            arch: amd64
-            ext: '.exe'
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -145,82 +119,32 @@ jobs:
           name: frontend-dist
           path: web/dist
 
-      - name: Embed web dist (Unix)
-        if: runner.os != 'Windows'
+      - name: Embed web dist
         shell: bash
         run: |
           rm -rf cmd/clawpanel/frontend/dist
           mkdir -p cmd/clawpanel/frontend/dist
           cp -R web/dist/. cmd/clawpanel/frontend/dist/
 
-      - name: Embed web dist (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Remove-Item -Recurse -Force cmd/clawpanel/frontend/dist -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Force -Path cmd/clawpanel/frontend/dist | Out-Null
-          Copy-Item -Path "web/dist/*" -Destination "cmd/clawpanel/frontend/dist" -Recurse -Force
-
       - name: Build binary
         env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
+          GOOS: linux
+          GOARCH: amd64
           CGO_ENABLED: 0
-        run: go build -trimpath -ldflags "-s -w -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Version=${{ needs.prepare.outputs.version }} -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Edition=pro" -o "${{ needs.prepare.outputs.app_name }}-v${{ needs.prepare.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}" ./cmd/clawpanel/
+        run: go build -trimpath -ldflags "-s -w -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Version=${{ needs.prepare.outputs.version }} -X github.com/zhaoxinyi02/ClawPanel/internal/buildinfo.Edition=pro" -o "${{ needs.prepare.outputs.app_name }}-v${{ needs.prepare.outputs.version }}-linux-amd64" ./cmd/clawpanel/
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v7
         with:
-          name: binary-${{ matrix.os }}-${{ matrix.arch }}
-          path: ${{ needs.prepare.outputs.app_name }}-v${{ needs.prepare.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+          name: binary-linux-amd64
+          path: ${{ needs.prepare.outputs.app_name }}-v${{ needs.prepare.outputs.version }}-linux-amd64
           retention-days: 30
 
-  # Windows 安装包复用前面生成好的 Windows 可执行文件，并在 Windows runner 上原生构建。
-  build-installer:
-    name: Build Windows Installer
-    needs: [prepare, build-binaries]
-    runs-on: windows-2025
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: installer/go.mod
-          cache: true
-
-      - name: Download windows binary artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: binary-windows-amd64
-          path: dist
-
-      - name: Build installer
-        shell: pwsh
-        working-directory: installer
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          New-Item -ItemType Directory -Force -Path payload | Out-Null
-          New-Item -ItemType Directory -Force -Path ../dist | Out-Null
-          Copy-Item "../dist/clawpanel-v${env:VERSION}-windows-amd64.exe" "payload/clawpanel.exe" -Force
-          go build -trimpath -ldflags "-s -w -X main.VERSION=${env:VERSION}" -o "../dist/ClawPanel-Setup-v${env:VERSION}.exe" .
-          Remove-Item "payload/clawpanel.exe" -Force
-
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: windows-installer
-          path: dist/ClawPanel-Setup-v${{ needs.prepare.outputs.version }}.exe
-          retention-days: 30
-
-  # 汇总所有二进制/安装包，并生成统一 checksums。
+  # 汇总 Linux amd64 二进制，并生成统一 checksums。
   bundle:
     name: Bundle Release Assets
-    needs: [prepare, build-binaries, build-installer]
-    if: ${{ always() && needs.prepare.result == 'success' && needs.build-binaries.result == 'success' && needs.build-installer.result == 'success' }}
+    needs: [prepare, build-binaries]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.build-binaries.result == 'success' }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -230,12 +154,6 @@ jobs:
           pattern: binary-*
           path: release
           merge-multiple: true
-
-      - name: Download installer artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: windows-installer
-          path: release
 
       - name: Add fixed Linux binary alias
         run: |
