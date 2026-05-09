@@ -1021,6 +1021,7 @@ TELEGRAM_BOT_TOKEN=123456:demo`,
     return {
       ok: true,
       actions: [
+        { id: 'pairing-approve', label: '消息渠道批准', description: '批准 Hermes 消息渠道配对请求', command: 'hermes pairing approve qqbot EC2PV5HV' },
         { id: 'setup', label: 'Hermes Setup', description: '运行 Hermes 初始化向导', command: 'hermes setup' },
         { id: 'doctor', label: 'Hermes Doctor', description: '诊断 Hermes 运行环境与依赖', command: 'hermes doctor' },
         { id: 'update', label: 'Hermes Update', description: '更新 Hermes 到最新版本', command: 'hermes update' },
@@ -1032,7 +1033,7 @@ TELEGRAM_BOT_TOKEN=123456:demo`,
       ],
     };
   },
-  runHermesAction: async (_action: string) => {
+  runHermesAction: async (_action: string, _params?: { platform?: string; pairingCode?: string }) => {
     await delay(120);
     return { ok: true, taskId: 'task-hermes-demo' };
   },

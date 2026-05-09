@@ -98,3 +98,35 @@ func TestDetectPythonVersionFallsBackToPyLauncher(t *testing.T) {
 		t.Fatalf("expected py launcher version, got %q", got)
 	}
 }
+
+func TestHermesInstallScriptUsesRuntimeHomeFallback(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("software.go")
+	if err != nil {
+		t.Fatalf("read software.go: %v", err)
+	}
+	source := string(raw)
+	if strings.Contains(source, `export HOME="${HOME:-/root}"`) {
+		t.Fatalf("hermes install script should not hardcode /root home fallback")
+	}
+	if !strings.Contains(source, `export HOME="${HOME:-$(cd ~ && pwd)}"`) {
+		t.Fatalf("hermes install script should use runtime HOME fallback")
+	}
+}
+
+func TestSoftwareListPassesConfigToHermesDetection(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("software.go")
+	if err != nil {
+		t.Fatalf("read software.go: %v", err)
+	}
+	source := string(raw)
+	if strings.Contains(source, "hermesStatus := detectHermesStatus()\n") {
+		t.Fatalf("software list should pass config into Hermes detection")
+	}
+	if !strings.Contains(source, "hermesStatus := detectHermesStatus(cfg)") {
+		t.Fatalf("software list should use configured workspace for Hermes detection")
+	}
+}

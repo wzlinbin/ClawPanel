@@ -41,6 +41,38 @@ func TestBuildHermesActionScript(t *testing.T) {
 	}
 }
 
+func TestBuildHermesPairingApproveScript(t *testing.T) {
+	t.Parallel()
+
+	name, script, ok := buildHermesActionScript("pairing-approve", HermesActionParams{
+		Platform:    "qqbot",
+		PairingCode: "EC2PV5HV",
+	})
+	if !ok {
+		t.Fatalf("expected pairing approve action to be supported")
+	}
+	if name != "Hermes Pairing Approve" {
+		t.Fatalf("unexpected task name %q", name)
+	}
+	if !strings.Contains(script, "hermes pairing approve qqbot EC2PV5HV") {
+		t.Fatalf("expected approve command in script, got %q", script)
+	}
+}
+
+func TestBuildHermesPairingApproveRejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	if _, _, ok := buildHermesActionScript("pairing-approve", HermesActionParams{Platform: "qqbot"}); ok {
+		t.Fatalf("expected empty pairing code to be rejected")
+	}
+	if _, _, ok := buildHermesActionScript("pairing-approve", HermesActionParams{Platform: "qqbot;bad", PairingCode: "EC2PV5HV"}); ok {
+		t.Fatalf("expected invalid platform to be rejected")
+	}
+	if _, _, ok := buildHermesActionScript("pairing-approve", HermesActionParams{Platform: "qqbot", PairingCode: "EC2;BAD"}); ok {
+		t.Fatalf("expected invalid pairing code to be rejected")
+	}
+}
+
 func TestHermesHomeDirPrefersConfiguredWorkspaceUser(t *testing.T) {
 	t.Parallel()
 

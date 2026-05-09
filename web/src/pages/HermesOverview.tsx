@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { api } from '../lib/api';
-import { Brain, Download, ExternalLink, RefreshCw, Terminal, Wrench, CheckCircle2, AlertTriangle, Bell, Radio, MessageSquare, GitBranch, Settings } from 'lucide-react';
+import { Download, RefreshCw, Terminal, CheckCircle2, AlertTriangle, Play, TerminalSquare, Wrench, Clock3, ArrowRight } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 interface HermesStatus {
@@ -29,6 +29,33 @@ interface HermesOverviewData {
   actions?: Array<{ id: string; label: string; command: string }>;
 }
 
+interface HermesAction {
+  id: string;
+  label: string;
+  description?: string;
+  command?: string;
+}
+
+interface HermesTask {
+  id: string;
+  name: string;
+  type: string;
+  status: 'pending' | 'running' | 'success' | 'failed' | 'canceled';
+  progress: number;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  log?: string[];
+}
+
+function taskStatusTone(status: HermesTask['status']) {
+  if (status === 'running') return 'text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-200';
+  if (status === 'pending') return 'text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-200';
+  if (status === 'success') return 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-200';
+  if (status === 'failed') return 'text-red-700 bg-red-50 dark:bg-red-900/20 dark:text-red-200';
+  return 'text-gray-700 bg-gray-100 dark:bg-gray-800 dark:text-gray-300';
+}
+
 export default function HermesOverview() {
   const { locale } = useI18n();
   const { uiMode } = (useOutletContext() as { uiMode?: 'modern' }) || {};
@@ -36,11 +63,33 @@ export default function HermesOverview() {
   const modern = uiMode === 'modern';
   const [status, setStatus] = useState<HermesStatus | null>(null);
   const [overview, setOverview] = useState<HermesOverviewData | null>(null);
+  const [actions, setActions] = useState<HermesAction[]>([]);
+  const [tasks, setTasks] = useState<HermesTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(true);
   const [storageLoading, setStorageLoading] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [runningAction, setRunningAction] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+
+  const loadActionData = async () => {
+    setActionLoading(true);
+    try {
+      const [actionRes, taskRes] = await Promise.all([
+        api.getHermesActions(),
+        api.getHermesTasks(),
+      ]);
+      if (actionRes?.ok) {
+        setActions(Array.isArray(actionRes.actions) ? actionRes.actions.filter((action: HermesAction) => action.id !== 'pairing-approve') : []);
+      }
+      if (taskRes?.ok) {
+        setTasks(Array.isArray(taskRes.tasks) ? taskRes.tasks : []);
+      }
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const loadStatus = async () => {
     setLoading(true);
@@ -67,7 +116,18 @@ export default function HermesOverview() {
     }
   };
 
-  useEffect(() => { loadStatus(); }, []);
+  useEffect(() => {
+    void loadStatus();
+    void loadActionData();
+  }, []);
+
+  useEffect(() => {
+    if (!tasks.some(task => task.status === 'running' || task.status === 'pending')) return;
+    const timer = setInterval(() => {
+      void loadActionData();
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [tasks]);
 
   const handleInstall = async () => {
     setInstalling(true);
@@ -87,10 +147,28 @@ export default function HermesOverview() {
     }
   };
 
-  const open = (url?: string) => {
-    if (!url) return;
-    window.open(url, '_blank', 'noopener,noreferrer');
+  const runAction = async (action: HermesAction) => {
+    setRunningAction(action.id);
+    setMsg('');
+    setErr('');
+    try {
+      const res = await api.runHermesAction(action.id);
+      if (!res?.ok) {
+        setErr(res?.error || (locale === 'zh-CN' ? '触发 Hermes 动作失败' : 'Failed to run Hermes action'));
+        return;
+      }
+      setMsg(locale === 'zh-CN'
+        ? `已触发 ${action.label}，任务 ID: ${res.taskId || '-'}`
+        : `${action.label} triggered. Task ID: ${res.taskId || '-'}`);
+      await loadActionData();
+    } catch {
+      setErr(locale === 'zh-CN' ? '触发 Hermes 动作失败' : 'Failed to run Hermes action');
+    } finally {
+      setRunningAction('');
+    }
   };
+
+  const recentTasks = useMemo(() => tasks.slice(0, 8), [tasks]);
 
   const cards = [
     {
@@ -218,82 +296,91 @@ export default function HermesOverview() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className={`${modern ? 'page-modern-panel' : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50'} rounded-2xl p-5 xl:col-span-2 space-y-4`}>
-          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold">
-            <Brain size={18} className="text-blue-500" />
-            {locale === 'zh-CN' ? '当前运行时信息' : 'Runtime Details'}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            {[
-              { label: 'Version', value: status?.version || '-' },
-              { label: 'Binary', value: status?.binaryPath || '-' },
-              { label: 'Home', value: status?.homeDir || '-' },
-              { label: 'Config', value: status?.configPath || '-' },
-              { label: 'Env', value: status?.envPath || '-' },
-              { label: 'State', value: status?.stateDir || '-' },
-            ].map(item => (
-              <div key={item.label} className="rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50/70 dark:bg-gray-900/40 px-4 py-3">
-                <div className="text-[11px] uppercase tracking-wider text-gray-500">{item.label}</div>
-                <div className="mt-1 font-mono break-all text-gray-800 dark:text-gray-100">{item.value}</div>
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {actions.map(action => {
+            const commandPreview = action.command || action.id;
+            return (
+              <div key={action.id} className={`${modern ? 'page-modern-panel' : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50'} relative overflow-hidden rounded-[28px] p-5`}>
+                <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent dark:via-slate-200/20" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold">
+                      <TerminalSquare size={16} className="text-blue-500" />
+                      <span className="truncate">{action.label}</span>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">{action.description || '-'}</div>
+                  </div>
+                  <button
+                    onClick={() => void runAction(action)}
+                    disabled={runningAction === action.id}
+                    className={`${modern ? 'page-modern-accent px-3 py-2 text-xs disabled:opacity-50' : 'rounded-lg bg-blue-600 px-3 py-2 text-xs text-white disabled:opacity-50'} shrink-0 inline-flex items-center gap-2`}
+                  >
+                    {runningAction === action.id ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                    {locale === 'zh-CN' ? '执行' : 'Run'}
+                  </button>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  <Clock3 size={12} />
+                  <span>{locale === 'zh-CN' ? 'CLI 命令预览' : 'CLI Command Preview'}</span>
+                </div>
+                <div className="mt-2 rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-3 text-xs font-mono text-gray-700 dark:border-gray-700/50 dark:bg-gray-900/40 dark:text-gray-200">
+                  {commandPreview}
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+          {actions.length === 0 && !actionLoading && (
+            <div className={`${modern ? 'page-modern-panel' : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50'} rounded-[28px] p-5 text-sm text-gray-500 dark:text-gray-400`}>
+              {locale === 'zh-CN' ? '当前没有可执行 Hermes 动作' : 'No Hermes actions available'}
+            </div>
+          )}
         </div>
 
         <div className={`${modern ? 'page-modern-panel' : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50'} rounded-2xl p-5 space-y-4`}>
-          <div className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold">
-            <Wrench size={18} className="text-blue-500" />
-            {locale === 'zh-CN' ? '管理入口' : 'Management Links'}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-white">
+              <Wrench size={17} className="text-blue-500" />
+              {locale === 'zh-CN' ? '最近动作任务' : 'Recent Hermes Tasks'}
+            </div>
+            <button
+              onClick={() => navigate('/hermes/tasks')}
+              className={`${modern ? 'page-modern-action px-3 py-2 text-xs' : 'rounded-lg bg-gray-100 px-3 py-2 text-xs dark:bg-gray-800'}`}
+            >
+              {locale === 'zh-CN' ? '展开全部' : 'View All'}
+            </button>
           </div>
-          <button onClick={() => navigate('/hermes/health')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '健康与检查' : 'Health & Checks'}</span>
-            <Bell size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/platforms')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '平台管理' : 'Platforms'}</span>
-            <Radio size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/logs')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '日志与诊断' : 'Logs & Diagnostics'}</span>
-            <Terminal size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/actions')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '动作中心' : 'Actions'}</span>
-            <Wrench size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/tasks')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '任务与账本' : 'Tasks & Ledger'}</span>
-            <Bell size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/sessions')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '会话与 Usage' : 'Sessions & Usage'}</span>
-            <MessageSquare size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/personality')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '人格与路由' : 'Personality & Routing'}</span>
-            <GitBranch size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/profiles')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? 'Profiles 编辑' : 'Profiles Editor'}</span>
-            <Settings size={14} />
-          </button>
-          <button onClick={() => navigate('/hermes/config')} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '结构化配置' : 'Structured Config'}</span>
-            <Settings size={14} />
-          </button>
-          <button onClick={() => open(status?.docsUrl)} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? '官方文档' : 'Documentation'}</span>
-            <ExternalLink size={14} />
-          </button>
-          <button onClick={() => open(status?.repoUrl)} className="w-full inline-flex items-center justify-between rounded-xl border border-gray-100 dark:border-gray-700/50 px-4 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-900/40">
-            <span>{locale === 'zh-CN' ? 'GitHub 仓库' : 'GitHub Repository'}</span>
-            <ExternalLink size={14} />
-          </button>
-          <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs leading-6 text-blue-700 dark:border-blue-900/30 dark:bg-blue-900/10 dark:text-blue-300">
-            {locale === 'zh-CN'
-              ? 'Hermes 与 OpenClaw 现在是并列视图；切到 Hermes 后，常见的状态、运行、日志、任务和配置操作都可以在这一套面板里完成，不会影响现有 OpenClaw 配置。'
-              : 'Hermes and OpenClaw now live as peer views. Once switched to Hermes, common status, runtime, logs, tasks, and configuration work can all stay inside this board without affecting OpenClaw.'}
+          <div className="space-y-3">
+            {recentTasks.map(task => (
+              <button
+                key={task.id}
+                onClick={() => navigate(`/hermes/tasks?task=${encodeURIComponent(task.id)}`)}
+                className="w-full rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-3 text-left transition-colors hover:bg-gray-100/80 dark:border-gray-700/50 dark:bg-gray-900/40 dark:hover:bg-gray-900/70"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-gray-900 dark:text-white">{task.name}</div>
+                    <div className="mt-1 text-xs text-gray-500">{task.type}</div>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${taskStatusTone(task.status)}`}>
+                    {task.status}
+                  </span>
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-gray-500">
+                  <span>{task.updatedAt}</span>
+                  <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-300">
+                    {locale === 'zh-CN' ? '查看详情' : 'Open'}
+                    <ArrowRight size={12} />
+                  </span>
+                </div>
+              </button>
+            ))}
+            {tasks.length === 0 && !actionLoading && (
+              <div className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500 dark:border-gray-700/50 dark:text-gray-400">
+                {locale === 'zh-CN' ? '当前还没有 Hermes 动作任务' : 'No Hermes tasks yet'}
+              </div>
+            )}
           </div>
         </div>
       </div>

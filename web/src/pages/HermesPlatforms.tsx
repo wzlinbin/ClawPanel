@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { api } from '../lib/api';
-import { RefreshCw, Save, Play, Wrench, Activity, Check, Radio, ChevronDown } from 'lucide-react';
+import { RefreshCw, Save, Play, Wrench, Activity, Check, Radio, ChevronDown, TerminalSquare, Clock3 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import ConfigFieldRenderer from '../components/ConfigFieldRenderer';
 
@@ -49,6 +49,15 @@ interface PlatformsResponse {
   enabledCount?: number;
   detailsById?: Record<string, PlatformDetail>;
 }
+
+const pairingPlatforms = [
+  { id: 'qqbot', label: 'QQ Bot' },
+  { id: 'weixin', label: 'Weixin / WeChat' },
+  { id: 'wecom', label: 'WeCom' },
+  { id: 'telegram', label: 'Telegram' },
+  { id: 'discord', label: 'Discord' },
+  { id: 'slack', label: 'Slack' },
+];
 
 // ============================================================================
 // Platform Field Catalogs
@@ -552,6 +561,8 @@ export default function HermesPlatforms() {
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [actionRunning, setActionRunning] = useState(false);
+  const [pairingPlatform, setPairingPlatform] = useState('qqbot');
+  const [pairingCode, setPairingCode] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const platformFields = (PLATFORM_CATALOG[selectedId] && PLATFORM_CATALOG[selectedId].length > 0)
@@ -624,6 +635,11 @@ export default function HermesPlatforms() {
   useEffect(() => { loadPlatforms(); }, []);
   useEffect(() => { if (selectedId) loadDetail(selectedId); }, [selectedId]);
   useEffect(() => { setAdvancedOpen(false); }, [selectedId]);
+  useEffect(() => {
+    if (pairingPlatforms.some(platform => platform.id === selectedId)) {
+      setPairingPlatform(selectedId);
+    }
+  }, [selectedId]);
 
   // --------------------------------------------------------------------------
   // Field value accessors
@@ -714,6 +730,32 @@ export default function HermesPlatforms() {
     }
   };
 
+  const runPairingApprove = async () => {
+    const normalizedCode = pairingCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      setErr(locale === 'zh-CN' ? '请输入消息渠道批准码' : 'Enter a pairing approval code');
+      return;
+    }
+    setActionRunning(true);
+    setMsg('');
+    setErr('');
+    try {
+      const r = await api.runHermesAction('pairing-approve', { platform: pairingPlatform, pairingCode: normalizedCode });
+      if (r?.ok) {
+        setMsg(locale === 'zh-CN'
+          ? `已提交消息渠道批准，任务 ID: ${r.taskId || '-'}`
+          : `Pairing approval submitted. Task ID: ${r.taskId || '-'}`);
+        setPairingCode('');
+      } else {
+        setErr(r?.error || (locale === 'zh-CN' ? '提交消息渠道批准失败' : 'Failed to approve pairing'));
+      }
+    } catch {
+      setErr(locale === 'zh-CN' ? '提交消息渠道批准失败' : 'Failed to approve pairing');
+    } finally {
+      setActionRunning(false);
+    }
+  };
+
   // --------------------------------------------------------------------------
   // Field renderer
   // --------------------------------------------------------------------------
@@ -780,6 +822,7 @@ export default function HermesPlatforms() {
     const order = { enabled: 0, configured: 1, unconfigured: 2 };
     return order[getPlatformStatusKey(a)] - order[getPlatformStatusKey(b)] || a.label.localeCompare(b.label);
   });
+  const pairingCommandPreview = `hermes pairing approve ${pairingPlatform || 'qqbot'} ${pairingCode.trim().toUpperCase() || 'EC2PV5HV'}`;
 
   // --------------------------------------------------------------------------
   // Render
@@ -792,9 +835,9 @@ export default function HermesPlatforms() {
           <h2 className={`${modern ? 'page-modern-title text-xl' : 'text-xl font-bold text-gray-900 dark:text-white'}`}>
             {locale === 'zh-CN' ? 'Hermes 平台管理' : 'Hermes Platforms'}
           </h2>
-          <p className={`${modern ? 'page-modern-subtitle mt-1 text-sm' : 'text-sm text-gray-500 mt-1'}`}>
+          <p className={`${modern ? 'page-modern-subtitle mt-1' : 'mt-1'} text-base font-bold text-red-600 dark:text-red-400`}>
             {locale === 'zh-CN'
-              ? '配置 Hermes 消息平台的机器人凭证和运行参数。'
+              ? '配置 Hermes 消息平台的机器人凭证和运行参数。配置完成后，请到动作菜单-安装 Hermes 消息网关依赖并启动'
               : 'Configure Hermes messaging platform bot credentials and runtime parameters.'}
           </p>
           <p className="text-xs text-gray-500 mt-1.5 inline-flex items-center gap-3 flex-wrap">
@@ -811,6 +854,66 @@ export default function HermesPlatforms() {
 
       {msg && <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-900/10 dark:text-emerald-300">{msg}</div>}
       {err && <div className="rounded-2xl border border-red-100 bg-red-50/80 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-300">{err}</div>}
+
+      <div className={`${modern ? 'page-modern-panel' : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/50'} rounded-2xl p-5 space-y-4`}>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold">
+              <TerminalSquare size={16} className="text-blue-500" />
+              {locale === 'zh-CN' ? '消息渠道批准' : 'Pairing Approval'}
+            </div>
+            <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              {locale === 'zh-CN' ? '批准 Hermes 消息渠道配对请求' : 'Approve a Hermes messaging channel pairing request'}
+            </div>
+          </div>
+          <button
+            onClick={() => void runPairingApprove()}
+            disabled={actionRunning || !pairingCode.trim()}
+            className={`${modern ? 'page-modern-accent px-4 py-2 text-xs disabled:opacity-50' : 'rounded-lg bg-blue-600 px-4 py-2 text-xs text-white disabled:opacity-50'} shrink-0 inline-flex items-center justify-center gap-2`}
+          >
+            {actionRunning ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+            {locale === 'zh-CN' ? '提交批准' : 'Submit Approval'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              {locale === 'zh-CN' ? '消息渠道' : 'Channel'}
+            </span>
+            <select
+              value={pairingPlatform}
+              onChange={event => setPairingPlatform(event.target.value)}
+              className="w-full rounded-2xl border border-gray-100 bg-white/80 px-4 py-3 text-sm text-gray-700 outline-none transition focus:border-blue-400 dark:border-gray-700/50 dark:bg-gray-900/40 dark:text-gray-200"
+            >
+              {pairingPlatforms.map(platform => (
+                <option key={platform.id} value={platform.id}>{platform.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              {locale === 'zh-CN' ? '批准码' : 'Approval Code'}
+            </span>
+            <input
+              value={pairingCode}
+              onChange={event => setPairingCode(event.target.value.toUpperCase())}
+              placeholder="EC2PV5HV"
+              className="w-full rounded-2xl border border-gray-100 bg-white/80 px-4 py-3 text-sm font-mono text-gray-700 outline-none transition placeholder:text-gray-400 focus:border-blue-400 dark:border-gray-700/50 dark:bg-gray-900/40 dark:text-gray-200"
+            />
+          </label>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+            <Clock3 size={12} />
+            <span>{locale === 'zh-CN' ? 'CLI 命令预览' : 'CLI Command Preview'}</span>
+          </div>
+          <div className="mt-2 rounded-2xl border border-gray-100 bg-gray-50/70 px-4 py-3 text-xs font-mono text-gray-700 dark:border-gray-700/50 dark:bg-gray-900/40 dark:text-gray-200">
+            {pairingCommandPreview}
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6">
         {/* Platform list */}

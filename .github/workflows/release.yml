@@ -237,6 +237,12 @@ jobs:
           name: windows-installer
           path: release
 
+      - name: Add fixed Linux binary alias
+        run: |
+          set -euo pipefail
+          cd release
+          cp "clawpanel-v${{ needs.prepare.outputs.version }}-linux-amd64" clawpanel
+
       - name: Generate checksums
         run: |
           set -euo pipefail

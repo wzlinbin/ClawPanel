@@ -17,7 +17,7 @@ import (
 
 const fixedDefaultProviderBaseURL = "https://api.api2cn.com/v1"
 const fixedDefaultProviderRootURL = "https://api.api2cn.com"
-const fixedDefaultProviderBalanceURL = "http://127.0.0.1:8080/api/v1/public/balance"
+const fixedDefaultProviderBalanceURL = fixedDefaultProviderRootURL + "/api/v1/public/balance"
 const fixedDefaultProviderUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/136.0.0.0 Safari/537.36"
 
 // ModelHealthCheck 模型健康检查

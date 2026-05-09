@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import {
   Wifi, Users, Cpu, Clock, RefreshCw,
   ChevronDown, ChevronRight, ArrowDown, Activity,
-  MemoryStick, Radio, TrendingUp, AlertTriangle, Download, Brain, Loader2, Wallet,
+  MemoryStick, Radio, TrendingUp, AlertTriangle, Download, Brain, Loader2,
 } from 'lucide-react';
 import type { LogEntry } from '../hooks/useWebSocket';
 import { useI18n } from '../i18n';
@@ -71,7 +71,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   const [autoScroll, setAutoScroll] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
   const [sessionActivity, setSessionActivity] = useState<SessionActivityItem[]>([]);
-  const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; amount?: number; error?: string; detail?: string }>({ loading: true });
 
   useEffect(() => {
     api.getStatus().then(r => { if (r.ok) setStatus(r); });
@@ -94,29 +93,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
     loadSessionActivity();
     const t = setInterval(loadSessionActivity, 10000);
     const onVisible = () => { if (!document.hidden) loadSessionActivity(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
-  }, []);
-
-  useEffect(() => {
-    const loadKeyBalance = () => {
-      if (document.hidden) return;
-      setKeyBalance(prev => ({ ...prev, loading: true }));
-      api.getKeyBalance().then(r => {
-        if (r?.ok) {
-          const value = r.balance !== undefined ? r.balance : r.quota_remaining;
-          setKeyBalance({
-            loading: false,
-            value: formatBalanceValue(value),
-            amount: parseBalanceAmount(value),
-            detail: formatBalanceDetail(r),
-          });
-        } else setKeyBalance({ loading: false, error: r?.error || '余额获取失败' });
-      }).catch((err: any) => setKeyBalance({ loading: false, error: err?.message || '余额获取失败' }));
-    };
-    loadKeyBalance();
-    const t = setInterval(loadKeyBalance, 60000);
-    const onVisible = () => { if (!document.hidden) loadKeyBalance(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
@@ -311,8 +287,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
           color="text-emerald-600" bg="bg-emerald-50 dark:bg-emerald-900/20" modern={modern} />
         <StatCard icon={Cpu} label={t.dashboard.aiModel} value={oc.currentModel ? shortenModel(oc.currentModel) : t.dashboard.notSet}
           sub={oc.currentModel || ''} color="text-violet-600" bg="bg-violet-50 dark:bg-violet-900/20" modern={modern} />
-        <StatCard icon={Wallet} label="API2CN 余额" value={keyBalance.loading ? '...' : (keyBalance.value || '--')}
-          sub={keyBalance.error || keyBalance.detail || 'api2cn'} color={keyBalance.error ? 'text-amber-600' : (keyBalance.amount !== undefined && keyBalance.amount < 20 ? 'text-red-600' : 'text-emerald-600')} bg={keyBalance.error ? 'bg-amber-50 dark:bg-amber-900/20' : (keyBalance.amount !== undefined && keyBalance.amount < 20 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20')} modern={modern} labelClassName="!text-[12px] !tracking-[0.12em]" valueClassName={keyBalance.error ? undefined : (keyBalance.amount !== undefined && keyBalance.amount < 20 ? '!text-red-600 dark:!text-red-400 !font-black' : '!text-emerald-600 dark:!text-emerald-400 !font-black')} />
         <StatCard icon={Clock} label={t.dashboard.uptime} value={formatUptime(adm.uptime || 0, t).split(/(\d+)/)[1]} unit={formatUptime(adm.uptime || 0, t).split(/(\d+)/)[2]}
           color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/20" modern={modern} />
         <StatCard icon={MemoryStick} label={t.dashboard.memory} value={`${adm.memoryMB || 0}`} unit="MB"
@@ -452,30 +426,6 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
       </div>
     </div>
   );
-}
-
-function formatBalanceValue(value: any) {
-  const numeric = parseBalanceAmount(value);
-  if (numeric !== undefined) return numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const text = String(value ?? '').trim();
-  return text || '--';
-}
-
-function parseBalanceAmount(value: any) {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  const text = String(value ?? '').trim();
-  if (!text) return undefined;
-  const numeric = Number(text);
-  return Number.isFinite(numeric) ? numeric : undefined;
-}
-
-function formatBalanceDetail(data: any) {
-  const parts: string[] = [];
-  if (data?.quota !== undefined && data?.quota_used !== undefined) {
-    parts.push(`${formatBalanceValue(data.quota_used)}/${formatBalanceValue(data.quota)} 已用`);
-  }
-  if (data?.api_key_status) parts.push(`key ${data.api_key_status}`);
-  return parts.join(' · ') || 'api2cn';
 }
 
 function StatCard({ icon: Icon, label, value, unit, color, bg, sub, modern, labelClassName = '', valueClassName = '' }: { icon: any; label: string; value: string; unit?: string; color: string; bg: string; sub?: string; modern?: boolean; labelClassName?: string; valueClassName?: string }) {

@@ -92,7 +92,7 @@ const _api = {
     return get('/hermes/logs' + (suffix ? `?${suffix}` : ''));
   },
   getHermesActions: () => get('/hermes/actions'),
-  runHermesAction: (action: string) => post('/hermes/action', { action }),
+  runHermesAction: (action: string, params?: { platform?: string; pairingCode?: string }) => post('/hermes/action', { action, ...(params || {}) }),
   getHermesTasks: () => get('/hermes/tasks'),
   getHermesTaskDetail: (id: string) => get(`/hermes/tasks/${id}`),
   getOpenClawConfig: () => get('/openclaw/config'),

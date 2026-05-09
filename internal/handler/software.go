@@ -359,7 +359,7 @@ func GetSoftwareList(cfg *config.Config) gin.HandlerFunc {
 		})
 
 		// Hermes
-		hermesStatus := detectHermesStatus()
+		hermesStatus := detectHermesStatus(cfg)
 		hermesInstalled := hermesStatus.Installed
 		hermesState := "not_installed"
 		if hermesInstalled {
@@ -1387,7 +1387,7 @@ exit 1
 			} else {
 				script = `
 set -e
-export HOME="${HOME:-/root}"
+export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 
 echo "📦 安装 Hermes Agent..."

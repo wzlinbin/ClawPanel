@@ -91,6 +91,11 @@ type HermesActionSpec struct {
 	Command     string `json:"command"`
 }
 
+type HermesActionParams struct {
+	Platform    string `json:"platform,omitempty"`
+	PairingCode string `json:"pairingCode,omitempty"`
+}
+
 type HermesHealthCheck struct {
 	ID      string `json:"id"`
 	Title   string `json:"title"`
@@ -2177,6 +2182,7 @@ func fileOrDirExists(path string) bool {
 
 func hermesActionCatalog() []HermesActionSpec {
 	return []HermesActionSpec{
+		{ID: "pairing-approve", Label: "消息渠道批准", Description: "批准 Hermes 消息渠道配对请求", Command: "hermes pairing approve qqbot EC2PV5HV"},
 		{ID: "setup", Label: "Hermes Setup", Description: "运行 Hermes 初始化向导", Command: "hermes setup"},
 		{ID: "doctor", Label: "Hermes Doctor", Description: "诊断 Hermes 运行环境与依赖", Command: "hermes doctor"},
 		{ID: "update", Label: "Hermes Update", Description: "更新 Hermes 到最新版本", Command: "hermes update"},
@@ -2188,7 +2194,58 @@ func hermesActionCatalog() []HermesActionSpec {
 	}
 }
 
-func buildHermesActionScript(action string) (taskName string, script string, ok bool) {
+func buildHermesCommandScript(command string) string {
+	return `set -e
+export HOME="${HOME:-$(cd ~ && pwd)}"
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+` + command
+}
+
+func normalizeHermesPairingApproval(platform string, pairingCode string) (string, string, error) {
+	platform = strings.TrimSpace(strings.ToLower(platform))
+	if platform == "" {
+		platform = "qqbot"
+	}
+	pairingCode = strings.TrimSpace(strings.ToUpper(pairingCode))
+	if pairingCode == "" {
+		return "", "", fmt.Errorf("pairingCode required")
+	}
+	if !isKnownHermesPlatform(platform) {
+		return "", "", fmt.Errorf("unsupported platform: %s", platform)
+	}
+	if !isHermesCLIToken(platform) || !isHermesCLIToken(pairingCode) {
+		return "", "", fmt.Errorf("platform or pairingCode contains unsupported characters")
+	}
+	return platform, pairingCode, nil
+}
+
+func isKnownHermesPlatform(platform string) bool {
+	for _, spec := range hermesPlatformSpecs {
+		if spec.ID == platform {
+			return true
+		}
+	}
+	return false
+}
+
+func isHermesCLIToken(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func buildHermesActionScript(action string, params ...HermesActionParams) (taskName string, script string, ok bool) {
+	actionParams := HermesActionParams{}
+	if len(params) > 0 {
+		actionParams = params[0]
+	}
 	switch action {
 	case "setup":
 		return "Hermes Setup", `set -e
@@ -2205,6 +2262,12 @@ hermes doctor`, true
 export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 hermes update`, true
+	case "pairing-approve":
+		platform, pairingCode, err := normalizeHermesPairingApproval(actionParams.Platform, actionParams.PairingCode)
+		if err != nil {
+			return "", "", false
+		}
+		return "Hermes Pairing Approve", buildHermesCommandScript(fmt.Sprintf("hermes pairing approve %s %s", platform, pairingCode)), true
 	case "gateway-install":
 		return "Hermes Gateway Install", `set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"
@@ -2857,14 +2920,23 @@ func RunHermesDoctor(cfg *config.Config, tm *taskman.Manager) gin.HandlerFunc {
 func RunHermesAction(tm *taskman.Manager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			Action string `json:"action"`
+			Action      string `json:"action"`
+			Platform    string `json:"platform"`
+			PairingCode string `json:"pairingCode"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Action) == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "action required"})
 			return
 		}
 		action := strings.TrimSpace(req.Action)
-		taskName, script, ok := buildHermesActionScript(action)
+		params := HermesActionParams{Platform: req.Platform, PairingCode: req.PairingCode}
+		if action == "pairing-approve" {
+			if _, _, err := normalizeHermesPairingApproval(params.Platform, params.PairingCode); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": err.Error()})
+				return
+			}
+		}
+		taskName, script, ok := buildHermesActionScript(action, params)
 		if !ok {
 			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "unsupported action: " + action})
 			return

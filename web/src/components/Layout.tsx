@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ScrollText, Radio, Sparkles, Clock, Settings,
   Moon, Sun, LogOut, Menu, FolderOpen, Languages, MessageSquare,
-  RotateCw, RefreshCw, Power, Puzzle, Bot, Search, Bell, ChevronDown, GitBranch, Network, BriefcaseBusiness, Activity, Brain, TerminalSquare, FileStack, Key, X,
+  RotateCw, RefreshCw, Power, Puzzle, Bot, Search, Bell, ChevronDown, GitBranch, Network, BriefcaseBusiness, Activity, Brain, TerminalSquare, Wallet, Key, X,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import AIAssistant from './AIAssistant';
@@ -63,6 +63,27 @@ function mergeTasks(base: TaskInfo[], extra: TaskInfo[]) {
 
 function filterVisibleTasks(tasks: TaskInfo[]) {
   return tasks.filter(task => !(task.type === 'workflow_run' && task.status === 'canceled'));
+}
+
+function formatBalanceValue(value: any) {
+  const numeric = parseBalanceAmount(value);
+  if (numeric === undefined) return String(value ?? '--');
+  return numeric.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function parseBalanceAmount(value: any) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const parsed = Number(String(value ?? '').replace(/[^\d.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function formatBalanceDetail(data: any) {
+  const parts: string[] = [];
+  if (data?.quota_used !== undefined && data?.quota !== undefined) {
+    parts.push(`${formatBalanceValue(data.quota_used)}/${formatBalanceValue(data.quota)} 已用`);
+  }
+  if (data?.currency) parts.push(String(data.currency));
+  return parts.join(' · ') || 'api2cn';
 }
 
 function PanelSettingsModal({ open, onClose, onLogout, locale }: { open: boolean; onClose: () => void; onLogout: () => void; locale: string }) {
@@ -207,6 +228,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   const [profileOpen, setProfileOpen] = useState(false);
   const [panelSettingsOpen, setPanelSettingsOpen] = useState(false);
   const [hermesOverview, setHermesOverview] = useState<any | null>(null);
+  const [keyBalance, setKeyBalance] = useState<{ loading: boolean; value?: string; amount?: number; error?: string; detail?: string }>({ loading: true });
   const searchRef = useRef<HTMLDivElement | null>(null);
   const profileRef = useRef<HTMLDivElement | null>(null);
   const isHermesBoard = location.pathname === '/hermes' || location.pathname.startsWith('/hermes/');
@@ -224,6 +246,34 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
   }, []);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  useEffect(() => {
+    const loadKeyBalance = () => {
+      if (document.hidden) return;
+      setKeyBalance(prev => ({ ...prev, loading: true }));
+      api.getKeyBalance().then(r => {
+        if (r?.ok) {
+          const value = r.balance !== undefined ? r.balance : r.quota_remaining;
+          setKeyBalance({
+            loading: false,
+            value: formatBalanceValue(value),
+            amount: parseBalanceAmount(value),
+            detail: formatBalanceDetail(r),
+          });
+        } else {
+          setKeyBalance({ loading: false, error: r?.error || '余额获取失败' });
+        }
+      }).catch((err: any) => setKeyBalance({ loading: false, error: err?.message || '余额获取失败' }));
+    };
+    loadKeyBalance();
+    const timer = setInterval(loadKeyBalance, 60000);
+    const onVisible = () => { if (!document.hidden) loadKeyBalance(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
 
   useEffect(() => {
 	if (!tasks.some(task => task.status === 'running' || task.status === 'pending')) return;
@@ -272,15 +322,13 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
 
   const hermesNavItems = useMemo(() => [
     { to: '/hermes', icon: Brain, label: locale === 'zh-CN' ? '概览' : 'Overview' },
-    { to: '/hermes/health', icon: Bell, label: locale === 'zh-CN' ? '健康' : 'Health' },
-    { to: '/hermes/platforms', icon: Radio, label: locale === 'zh-CN' ? '平台' : 'Platforms' },
-    { to: '/hermes/logs', icon: ScrollText, label: locale === 'zh-CN' ? '日志' : 'Logs' },
-    { to: '/hermes/actions', icon: TerminalSquare, label: locale === 'zh-CN' ? '动作' : 'Actions' },
+    { to: '/hermes/platforms', icon: Radio, label: locale === 'zh-CN' ? '通道管理' : 'Platforms' },
     { to: '/hermes/tasks', icon: Activity, label: locale === 'zh-CN' ? '任务' : 'Tasks' },
     { to: '/hermes/sessions', icon: MessageSquare, label: locale === 'zh-CN' ? '会话' : 'Sessions' },
     { to: '/hermes/personality', icon: Bot, label: locale === 'zh-CN' ? '人格与路由' : 'Personality & Routing' },
-    { to: '/hermes/profiles', icon: FileStack, label: 'Profiles' },
-    { to: '/hermes/config', icon: Settings, label: locale === 'zh-CN' ? '配置' : 'Config' },
+    { to: '/hermes/health', icon: Bell, label: locale === 'zh-CN' ? '健康' : 'Health' },
+    { to: '/hermes/config', icon: Settings, label: locale === 'zh-CN' ? '模型配置' : 'Config' },
+    { to: '/hermes/logs', icon: ScrollText, label: locale === 'zh-CN' ? '日志' : 'Logs' },
   ], [locale]);
 
   const openClawMobileNavItems = useMemo(() => [
@@ -397,7 +445,6 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
     { label: locale === 'zh-CN' ? 'Hermes 任务' : 'Hermes Tasks', keywords: ['hermes task', 'tasks', 'ledger', '任务', '后台任务'], path: '/hermes/tasks' },
     { label: locale === 'zh-CN' ? 'Hermes 会话' : 'Hermes Sessions', keywords: ['hermes sessions', 'conversation', 'history', '会话', '历史'], path: '/hermes/sessions' },
     { label: locale === 'zh-CN' ? 'Hermes 人格与路由' : 'Hermes Personality & Routing', keywords: ['hermes personality', 'profiles', 'routing', 'soul', 'profile', '路由', '人格'], path: '/hermes/personality' },
-    { label: locale === 'zh-CN' ? 'Hermes Profiles' : 'Hermes Profiles', keywords: ['hermes profile', 'profiles', 'persona', 'yaml', 'markdown'], path: '/hermes/profiles' },
     { label: locale === 'zh-CN' ? 'Hermes 配置' : 'Hermes Config', keywords: ['hermes config', 'hermes setup', '配置', 'setup'], path: '/hermes/config' },
     { label: locale === 'zh-CN' ? '面板聊天' : 'Panel Chat', keywords: ['chat', 'panel chat', '对话', '聊天', '本地聊天'], path: '/chat' },
     { label: '活动日志', keywords: ['log', 'logs', '日志', '活动日志'], path: '/logs' },
@@ -682,6 +729,31 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <div className="hidden min-w-[180px] rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] px-3 py-2 shadow-sm 2xl:block">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    keyBalance.error
+                      ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-300'
+                      : keyBalance.amount !== undefined && keyBalance.amount < 20
+                        ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300'
+                        : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300'
+                  }`}>
+                    <Wallet size={16} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ui-muted)]">API2CN 余额</div>
+                    <div className={`truncate text-sm font-black ${
+                      keyBalance.error
+                        ? 'text-amber-600 dark:text-amber-300'
+                        : keyBalance.amount !== undefined && keyBalance.amount < 20
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-emerald-600 dark:text-emerald-400'
+                    }`}>
+                      {keyBalance.loading ? '...' : (keyBalance.value || '--')}
+                    </div>
+                  </div>
+                </div>
+              </div>
             <button onClick={toggleDark} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ui-border)] bg-[var(--ui-panel-strong)] text-[var(--ui-muted)] transition-colors hover:text-[var(--ui-heading)]">
                 {dark ? <Sun size={17} /> : <Moon size={17} />}
               </button>
