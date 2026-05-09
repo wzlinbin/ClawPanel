@@ -8,7 +8,7 @@ func updaterHTML(currentVersion, token string, panelPort int, edition string) st
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClawPanel 更新工具</title>
+<title>API2CN 更新工具</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0f0f14;--card:#1a1a24;--border:#2a2a3a;--text:#e0e0ef;--muted:#888;--accent:#7c5cfc;--accent2:#a78bfa;--green:#22c55e;--red:#ef4444;--amber:#f59e0b;--blue:#3b82f6}
@@ -82,13 +82,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <body>
 <div class="container">
   <div class="header">
-    <h1 id="page-title">🐾 ClawPanel 更新工具</h1>
+    <h1 id="page-title">🐾 API2CN 更新工具</h1>
     <p id="page-subtitle">独立更新服务 · 进程隔离 · 安全可靠</p>
   </div>
 
   <!-- Unauthorized state -->
   <div id="unauthorized" class="card hidden">
-    <div class="err-box">⛔ 授权令牌无效或已过期。请返回 ClawPanel 面板重新点击「前往更新」。</div>
+    <div class="err-box">⛔ 授权令牌无效或已过期。请返回 API2CN 面板重新点击「前往更新」。</div>
     <button class="btn btn-secondary" onclick="goBack()">← 返回面板</button>
   </div>
 
@@ -166,7 +166,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
 </div>
 
-<div class="footer">ClawPanel Update Tool · Isolated Process · v%s</div>
+<div class="footer">API2CN Update Tool · Isolated Process · v%s</div>
 
 <!-- Confirm modal -->
 <div id="confirm-modal" class="modal-overlay hidden" onclick="closeModal()">
@@ -205,14 +205,14 @@ const CFG = MODE === 'openclaw' ? {
   hasUpload: false,
   productName: 'OpenClaw'
 } : {
-  title: '🐾 ClawPanel 更新工具',
+  title: '🐾 API2CN 更新工具',
   subtitle: '独立更新服务 · 进程隔离 · 安全可靠',
   checkApi: 'check-version',
   startApi: 'start-update',
   progressApi: 'progress',
-  confirmMsg: '确定要更新 ClawPanel 吗？更新过程中面板服务将暂时停止。',
+  confirmMsg: '确定要更新 API2CN 吗？更新过程中 API2CN 面板服务将暂时停止。',
   hasUpload: true,
-  productName: 'ClawPanel'
+  productName: 'API2CN'
 };
 
 const SOURCE_STORAGE_KEY = 'clawpanel-update-source:' + EDITION + ':' + MODE;
@@ -310,7 +310,7 @@ function confirmUpdate() {
   var t = CFG.confirmMsg;
   if (versionInfo && versionInfo.hasUpdate) {
     t = '确定要从 ' + versionInfo.currentVersion + ' 更新到 ' + versionInfo.latestVersion + ' 吗？';
-    if (MODE === 'clawpanel') t += '\\n\\n更新过程中 ClawPanel 面板服务将暂时停止。';
+    if (MODE === 'clawpanel') t += '\\n\\n更新过程中 API2CN 面板服务将暂时停止。';
     if (MODE === 'openclaw') t += '\\n\\n将执行 openclaw update 命令。';
   }
   if (MODE === 'clawpanel') {
@@ -331,20 +331,25 @@ async function doUpdate() {
   modal.classList.add('hidden');
   modal.style.display = 'none';
   showProgress();
+  addLog('🚀 已发送更新请求，开始监听进度...');
+  startPolling();
   try {
-    const r = await api(CFG.startApi, {method:'POST'});
+    const controller = new AbortController();
+    const timer = setTimeout(function(){ controller.abort(); }, 3000);
+    const r = await api(CFG.startApi, {method:'POST', signal: controller.signal});
+    clearTimeout(timer);
     if (!r.ok) {
       addLog('❌ 启动更新失败: ' + (r.error||''));
       return;
     }
-    startPolling();
   } catch(e) {
-    if (MODE === 'clawpanel') {
-      addLog('⚠️ 启动请求发送完成（服务可能正在重启中）');
+    if (e.name === 'AbortError') {
+      addLog('⚠️ 启动请求未及时返回，继续监听独立更新服务...');
+    } else if (MODE === 'clawpanel') {
+      addLog('⚠️ 启动请求连接中断，继续监听独立更新服务: ' + e.message);
     } else {
       addLog('⚠️ 网络错误: ' + e.message);
     }
-    startPolling();
   }
 }
 

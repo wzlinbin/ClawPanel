@@ -351,11 +351,11 @@ func (s *Server) handlePage(w http.ResponseWriter, r *http.Request) {
 	// Only allow access with valid token parameter
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		http.Error(w, "⛔ 禁止直接访问更新页面。请从 ClawPanel 面板的「版本管理」页面点击「前往更新」进入。", http.StatusForbidden)
+		http.Error(w, "⛔ 禁止直接访问更新页面。请从 API2CN 面板的「版本管理」页面点击「前往更新」进入。", http.StatusForbidden)
 		return
 	}
 	if !ValidateToken(token, s.panelPort) {
-		http.Error(w, "⛔ 授权令牌已失效或无效。请返回 ClawPanel 面板重新点击「前往更新」。", http.StatusForbidden)
+		http.Error(w, "⛔ 授权令牌已失效或无效。请返回 API2CN 面板重新点击「前往更新」。", http.StatusForbidden)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -440,9 +440,13 @@ func (s *Server) handleStartUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Unlock()
 
-	go s.doUpdate("local")
-
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"ok": true})
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
+
+	go s.doUpdate("local")
 }
 
 func (s *Server) handleUploadUpdate(w http.ResponseWriter, r *http.Request) {
