@@ -435,9 +435,13 @@ func (s *Server) handleStartUpdate(w http.ResponseWriter, r *http.Request) {
 	s.state = UpdateState{
 		Phase:     "validating",
 		Steps:     defaultSteps(),
-		Log:       []string{},
+		Progress:  5,
+		Message:   "授权验证通过，更新任务已启动",
+		Log:       []string{"🔐 授权验证通过，更新任务已启动"},
 		StartedAt: time.Now().Format(time.RFC3339),
 	}
+	s.state.Steps[0].Status = "done"
+	s.state.Steps[0].Message = "授权验证通过"
 	s.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")

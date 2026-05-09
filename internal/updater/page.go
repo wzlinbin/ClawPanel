@@ -189,6 +189,8 @@ const EDITION = '%s';
 const PANEL_URL = window.location.protocol + '//' + window.location.hostname + ':' + PANEL_PORT;
 let pollTimer = null;
 let versionInfo = null;
+let updateStarted = false;
+let progressReadFailures = 0;
 
 // Detect mode from URL: ?mode=openclaw or default (clawpanel)
 const urlParams = new URLSearchParams(window.location.search);
@@ -331,6 +333,9 @@ async function doUpdate() {
   modal.classList.add('hidden');
   modal.style.display = 'none';
   showProgress();
+  updateStarted = true;
+  progressReadFailures = 0;
+  setLocalProgress(5, '验证授权', 'running', '正在提交更新请求...');
   addLog('🚀 已发送更新请求，开始监听进度...');
   startPolling();
   try {
@@ -388,6 +393,29 @@ function showProgress() {
   document.getElementById('result-card').classList.add('hidden');
 }
 
+function setLocalProgress(percent, stepName, status, message) {
+  document.getElementById('progress-pct').textContent = percent + '%%';
+  document.getElementById('progress-fill').style.width = percent + '%%';
+  const steps = Array.prototype.slice.call(document.querySelectorAll('#steps-list .step'));
+  if (!steps.length) return;
+  steps.forEach(function(el) {
+    const name = el.querySelector('.step-name');
+    if (name && name.textContent === stepName) {
+      el.className = 'step ' + status;
+      const icon = el.querySelector('.step-icon');
+      if (icon) icon.textContent = status === 'done' ? '✓' : (status === 'running' ? '◉' : '○');
+      let msg = el.querySelector('.step-msg');
+      if (!msg) {
+        msg = document.createElement('div');
+        msg.className = 'step-msg';
+        const info = el.querySelector('.step-info');
+        if (info) info.appendChild(msg);
+      }
+      msg.textContent = message;
+    }
+  });
+}
+
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(pollProgress, 800);
@@ -401,6 +429,7 @@ async function pollProgress() {
       addLog('⚠️ 读取进度失败: ' + (r.error || '未知错误'));
       return;
     }
+    progressReadFailures = 0;
     const st = r.state;
     document.getElementById('progress-pct').textContent = (st.progress||0) + '%%';
     document.getElementById('progress-fill').style.width = (st.progress||0) + '%%';
@@ -421,6 +450,14 @@ async function pollProgress() {
       setTimeout(function(){showResult(st)}, 500);
     }
   } catch(e) {
+    progressReadFailures += 1;
+    if (MODE === 'clawpanel' && updateStarted) {
+      if (progressReadFailures === 1) {
+        addLog('ℹ️ 面板服务正在停止或重启，进度连接会短暂中断；请保持此页面打开。');
+      }
+      setLocalProgress(Math.min(95, Math.max(35, progressReadFailures * 5)), '启动服务', 'running', '等待 API2CN 面板服务恢复...');
+      return;
+    }
     addLog('⚠️ 读取进度失败: ' + e.message);
   }
 }
