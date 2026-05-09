@@ -184,7 +184,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 const TOKEN = '%s';
 const PANEL_PORT = %d;
 const UPDATER_BASE = window.location.origin;
-const UPDATER_PATH_BASE = '/api/panel/updater';
+const UPDATER_PATH_BASE = window.location.pathname.startsWith('/api/panel/updater') ? '/api/panel/updater' : '/updater';
 const EDITION = '%s';
 const PANEL_URL = window.location.protocol + '//' + window.location.hostname + ':' + PANEL_PORT;
 let pollTimer = null;
@@ -237,6 +237,10 @@ async function api(path, opts) {
   const sep = path.includes('?') ? '&' : '?';
   const url = UPDATER_BASE + UPDATER_PATH_BASE + '/api/' + path + sep + params.toString();
   const resp = await fetch(url, opts);
+  if (!resp.ok) {
+    const text = await resp.text().catch(function(){ return ''; });
+    throw new Error('HTTP ' + resp.status + (text ? ': ' + text.slice(0, 160) : ''));
+  }
   return resp.json();
 }
 
@@ -388,7 +392,10 @@ function startPolling() {
 async function pollProgress() {
   try {
     const r = await api(CFG.progressApi);
-    if (!r.ok) return;
+    if (!r.ok) {
+      addLog('⚠️ 读取进度失败: ' + (r.error || '未知错误'));
+      return;
+    }
     const st = r.state;
     document.getElementById('progress-pct').textContent = (st.progress||0) + '%%';
     document.getElementById('progress-fill').style.width = (st.progress||0) + '%%';
@@ -409,7 +416,7 @@ async function pollProgress() {
       setTimeout(function(){showResult(st)}, 500);
     }
   } catch(e) {
-    // Server might be restarting
+    addLog('⚠️ 读取进度失败: ' + e.message);
   }
 }
 

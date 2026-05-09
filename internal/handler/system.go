@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -706,6 +707,11 @@ func GenerateUpdateToken(cfg *config.Config, panelPort int) gin.HandlerFunc {
 		token := updaterPkg.GenerateToken(panelPort)
 		updaterPort := updaterPkg.UpdaterPort
 		host := c.Request.Host
+		if strings.Contains(host, ":") {
+			if hostname, _, err := net.SplitHostPort(host); err == nil {
+				host = hostname
+			}
+		}
 		scheme := "http"
 		if c.Request.TLS != nil {
 			scheme = "https"
@@ -717,7 +723,7 @@ func GenerateUpdateToken(cfg *config.Config, panelPort int) gin.HandlerFunc {
 			"ok":          true,
 			"token":       token,
 			"updaterPort": updaterPort,
-			"updaterURL":  fmt.Sprintf("%s://%s/api/panel/updater?token=%s", scheme, host, token),
+			"updaterURL":  fmt.Sprintf("%s://%s:%d/updater?token=%s", scheme, host, updaterPort, token),
 		})
 	}
 }
