@@ -358,7 +358,7 @@ install_hermes_gateway() {
 
   curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
   export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-  hermes setup
+  hermes setup --non-interactive
   hermes gateway install
   hermes gateway start
 }
