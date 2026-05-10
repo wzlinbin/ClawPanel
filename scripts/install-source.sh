@@ -349,6 +349,7 @@ install_openclaw_gateway() {
 
   curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
   export PATH="$HOME/.openclaw/bin:$PATH"
+  loginctl enable-linger $(whoami)
   openclaw gateway install
   openclaw gateway start
 }
