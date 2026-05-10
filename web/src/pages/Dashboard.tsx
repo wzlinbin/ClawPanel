@@ -67,9 +67,22 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   const modern = uiMode === 'modern';
   const [status, setStatus] = useState<any>(null);
   const [sessionActivity, setSessionActivity] = useState<SessionActivityItem[]>([]);
+  const [openClawInstalled, setOpenClawInstalled] = useState<boolean | null>(null);
+
+  const refreshOpenClawInstallState = async () => {
+    try {
+      const r = await api.getSoftwareList();
+      if (!r?.ok || !Array.isArray(r.software)) return;
+      const openClaw = r.software.find((item: any) => item?.id === 'openclaw');
+      if (openClaw) setOpenClawInstalled(!!openClaw.installed && openClaw.status !== 'not_installed');
+    } catch {
+      // keep the last known state
+    }
+  };
 
   useEffect(() => {
     api.getStatus().then(r => { if (r.ok) setStatus(r); });
+    void refreshOpenClawInstallState();
     const poll = () => { if (!document.hidden) api.getStatus().then(r => { if (r.ok) setStatus(r); }); };
     const t = setInterval(poll, 10000);
     // Resume immediately when tab becomes visible again
@@ -77,6 +90,12 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', onVisible); };
   }, []);
+
+  useEffect(() => {
+    if (typeof status?.openclaw?.installed === 'boolean') {
+      setOpenClawInstalled(status.openclaw.installed);
+    }
+  }, [status?.openclaw?.installed]);
 
   useEffect(() => {
     const loadSessionActivity = () => {
@@ -101,7 +120,9 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   const adm = status?.admin || {};
   const taskPressure: TaskPressureSummary = oc.taskPressure || {};
   const runtime = resolveOpenClawRuntime(oc, proc, gateway);
-  const runtimeTone = !oc.configured
+  const openClawRuntimeInstalled = typeof oc.installed === 'boolean' ? oc.installed : openClawInstalled;
+  const openClawMissing = !!status && (!oc.configured || openClawRuntimeInstalled === false);
+  const runtimeTone = openClawMissing
     ? 'amber'
     : runtime.healthy
       ? 'emerald'
@@ -176,7 +197,8 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
         const r = await api.getStatus();
         if (r?.ok) {
           setStatus(r);
-          if (r?.openclaw?.configured) {
+          if (r?.openclaw?.configured || r?.openclaw?.installed) {
+            void refreshOpenClawInstallState();
             setInstallOpenClawMsg('OpenClaw 已检测到，面板状态已自动刷新。');
             setInstallOpenClawErr('');
             return;
@@ -199,6 +221,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
         return;
       }
       setInstallOpenClawMsg(r?.message || 'OpenClaw 安装任务已创建，请在右上角消息中心查看实时进度。安装完成后会自动重新检测。');
+      void refreshOpenClawInstallState();
       void pollOpenClawReady();
     } catch {
       setInstallOpenClawErr('OpenClaw 安装请求失败，请检查网络或稍后重试');
@@ -209,15 +232,19 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
   return (
     <div className={`space-y-6 h-full flex flex-col ${modern ? 'p-0' : 'p-2'}`}>
       {/* OpenClaw not installed banner */}
-      {status && !oc.configured && (
+      {openClawMissing && (
         <div className="console-panel shrink-0 flex flex-col items-center gap-4 border-amber-300/70 bg-amber-50/90 p-6 text-center dark:border-amber-900/50 dark:bg-amber-950/20">
           <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-amber-300/70 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-300">
             <Brain size={28} className="text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">OpenClaw 尚未安装</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+              {openClawRuntimeInstalled === false && oc.configured ? '未检测到 OpenClaw 运行时' : 'OpenClaw 尚未安装'}
+            </h3>
             <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
-              API2CN 需要 OpenClaw AI 引擎才能正常工作。安装后即可配置模型、管理技能和连接通道。
+              {openClawRuntimeInstalled === false && oc.configured
+                ? '当前已有 OpenClaw 配置，但未检测到可用的 openclaw 命令或安装目录。可以重新执行一键安装来修复运行时。'
+                : 'API2CN 需要 OpenClaw AI 引擎才能正常工作。安装后即可配置模型、管理技能和连接通道。'}
             </p>
             {installOpenClawMsg && <p className="text-xs text-emerald-600 dark:text-emerald-300 mt-3 max-w-md mx-auto">{installOpenClawMsg}</p>}
             {installOpenClawErr && <p className="text-xs text-red-600 dark:text-red-300 mt-3 max-w-md mx-auto">{installOpenClawErr}</p>}
@@ -225,7 +252,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
           <button onClick={handleInstallOpenClaw} disabled={installingOC}
             className={`${modern ? 'page-modern-accent px-6 py-3 text-sm' : 'inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-all shadow-lg shadow-violet-200 dark:shadow-none'}`}>
             {installingOC ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-            {installingOC ? '安装中...' : '一键安装 OpenClaw'}
+            {installingOC ? '安装中...' : (openClawRuntimeInstalled === false && oc.configured ? '一键安装 / 修复 OpenClaw' : '一键安装 OpenClaw')}
           </button>
           <p className="text-[11px] text-gray-400">安装进度可在右上角铃铛中的消息中心实时查看</p>
         </div>
@@ -243,7 +270,7 @@ function DashboardPage({ logEntries, refreshLog }: DashboardProps) {
         </div>
       </div>
 
-      {oc.configured && !runtime.healthy && (
+      {oc.configured && !runtime.healthy && !openClawMissing && (
         <div className={`shrink-0 rounded-xl border p-5 shadow-[var(--ui-shadow)] ${runtime.state === 'offline' ? 'border-red-300/70 bg-red-50/90 dark:border-red-900/50 dark:bg-red-950/20' : 'border-amber-300/70 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/20'}`}>
           <div className="flex items-start gap-3">
             <div className={`mt-0.5 rounded-2xl p-2 ${runtime.state === 'offline' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'}`}>

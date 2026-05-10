@@ -380,10 +380,17 @@ func GetSoftwareList(cfg *config.Config) gin.HandlerFunc {
 
 		// OpenClaw
 		ocVer := detectOpenClawVersion(cfg)
+		ocInstalled := cfg.OpenClawRuntimeInstalled()
+		if ocVer != "" && ocVer != "installed" {
+			ocInstalled = true
+		}
+		if !ocInstalled && ocVer == "installed" {
+			ocVer = ""
+		}
 		list = append(list, SoftwareInfo{
 			ID: "openclaw", Name: "OpenClaw", Description: "AI 助手核心引擎",
-			Version: ocVer, Installed: ocVer != "", Installable: true,
-			Status: boolStatus(ocVer != ""), Category: "service", Icon: "brain",
+			Version: ocVer, Installed: ocInstalled, Installable: true,
+			Status: boolStatus(ocInstalled), Category: "service", Icon: "brain",
 		})
 
 		// NapCat (QQ) - detect Docker container OR native Windows Shell install

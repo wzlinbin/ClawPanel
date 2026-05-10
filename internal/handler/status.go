@@ -154,9 +154,11 @@ func GetStatus(db *sql.DB, cfg *config.Config, procMgr *process.Manager, napcatM
 		}
 
 		// 进程状态
+		openClawRuntimeInstalled := cfg.OpenClawRuntimeInstalled()
+		openClawConfigured := cfg.OpenClawConfigExists() || openClawRuntimeInstalled
 		procStatus := procMgr.GetStatus()
 		gatewayRunning := procMgr.GatewayListening()
-		runtimeHealth := buildOpenClawRuntimeHealth(cfg.OpenClawInstalled(), procStatus, gatewayRunning)
+		runtimeHealth := buildOpenClawRuntimeHealth(openClawRuntimeInstalled, procStatus, gatewayRunning)
 		taskPressure := openClawTaskPressureSummary{
 			ByStatus: map[string]int{
 				"queued":    0,
@@ -241,7 +243,8 @@ func GetStatus(db *sql.DB, cfg *config.Config, procMgr *process.Manager, napcatM
 				"edition": buildinfo.NormalizedEdition(),
 			},
 			"openclaw": gin.H{
-				"configured":      cfg.OpenClawInstalled(),
+				"configured":      openClawConfigured,
+				"installed":       openClawRuntimeInstalled,
 				"currentModel":    currentModel,
 				"enabledChannels": channels,
 				"taskPressure":    taskPressure,

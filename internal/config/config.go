@@ -1096,3 +1096,84 @@ func (c *Config) OpenClawInstalled() bool {
 	}
 	return false
 }
+
+// OpenClawRuntimeInstalled checks whether a real OpenClaw runtime is available.
+// Unlike OpenClawInstalled, this deliberately ignores openclaw.json so stale
+// configuration does not hide the install/repair entry in the UI.
+func (c *Config) OpenClawRuntimeInstalled() bool {
+	if c.IsLiteEdition() {
+		if c.OpenClawApp != "" {
+			if _, err := os.Stat(filepath.Join(c.OpenClawApp, "package.json")); err == nil {
+				return true
+			}
+		}
+		if launcher := c.BundledOpenClawLauncherPath(); launcher != "" {
+			return true
+		}
+		entry := c.BundledOpenClawEntrypoint()
+		if fileExists(entry) {
+			return true
+		}
+		return entry != "" && strings.HasSuffix(entry, ".mjs") && c.BundledNodeBinaryPath() != ""
+	}
+
+	if c.OpenClawApp != "" {
+		if _, err := os.Stat(filepath.Join(c.OpenClawApp, "package.json")); err == nil {
+			return true
+		}
+	}
+	if appDir := getNpmGlobalOpenClawDir(); appDir != "" {
+		if _, err := os.Stat(filepath.Join(appDir, "package.json")); err == nil {
+			return true
+		}
+	}
+	if p := DetectOpenClawBinaryPath(); p != "" {
+		return true
+	}
+	if p, err := exec.LookPath("openclaw"); err == nil && p != "" {
+		return true
+	}
+	for _, bin := range []string{
+		"/usr/local/bin/openclaw",
+		"/usr/bin/openclaw",
+		"/opt/homebrew/bin/openclaw",
+	} {
+		if _, err := os.Stat(bin); err == nil {
+			return true
+		}
+	}
+	if runtime.GOOS != "windows" {
+		return false
+	}
+
+	home, _ := os.UserHomeDir()
+	winPaths := []string{
+		filepath.Join(home, "AppData", "Roaming", "npm", "openclaw.cmd"),
+		filepath.Join(home, "AppData", "Roaming", "npm", "openclaw"),
+		`C:\Program Files\nodejs\openclaw.cmd`,
+	}
+	for _, userHome := range getWindowsUserHomes() {
+		winPaths = append(winPaths,
+			filepath.Join(userHome, "AppData", "Roaming", "npm", "openclaw.cmd"),
+			filepath.Join(userHome, "AppData", "Roaming", "npm", "openclaw"),
+		)
+	}
+	if systemRoot := os.Getenv("SYSTEMROOT"); systemRoot != "" {
+		winPaths = append(winPaths,
+			filepath.Join(systemRoot, "system32", "config", "systemprofile", "AppData", "Roaming", "npm", "openclaw.cmd"),
+		)
+	}
+	cmd := exec.Command("npm", "config", "get", "prefix")
+	cmd.Env = BuildExecEnv()
+	if out, err := cmd.Output(); err == nil {
+		if prefix := strings.TrimSpace(string(out)); prefix != "" {
+			winPaths = append(winPaths, filepath.Join(prefix, "openclaw.cmd"))
+		}
+	}
+	for _, wp := range winPaths {
+		if _, err := os.Stat(wp); err == nil {
+			return true
+		}
+	}
+	return false
+}
