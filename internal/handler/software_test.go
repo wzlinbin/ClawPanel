@@ -115,7 +115,7 @@ func TestHermesInstallScriptUsesRuntimeHomeFallback(t *testing.T) {
 	}
 }
 
-func TestOpenClawInstallScriptSkipsInteractiveOnboarding(t *testing.T) {
+func TestOpenClawInstallScriptUsesOfficialInstaller(t *testing.T) {
 	t.Parallel()
 
 	raw, err := os.ReadFile("software.go")
@@ -123,38 +123,27 @@ func TestOpenClawInstallScriptSkipsInteractiveOnboarding(t *testing.T) {
 		t.Fatalf("read software.go: %v", err)
 	}
 	source := string(raw)
-	if !strings.Contains(source, `OPENCLAW_NO_ONBOARD=1 bash -s -- --no-onboard`) {
+	if !strings.Contains(source, `curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install.sh | bash -s -- --no-onboard`) {
+		t.Fatalf("openclaw install script should use the official installer")
+	}
+	if !strings.Contains(source, `--no-onboard`) {
 		t.Fatalf("openclaw install script should skip interactive onboarding")
 	}
-	if !strings.Contains(source, `export OPENCLAW_DIR=%s`) {
-		t.Fatalf("openclaw install script should set OPENCLAW_DIR from ClawPanel config")
-	}
-	if !strings.Contains(source, `export OPENCLAW_CONFIG_PATH="$OPENCLAW_DIR/openclaw.json"`) {
-		t.Fatalf("openclaw install script should set OPENCLAW_CONFIG_PATH")
-	}
-	if !strings.Contains(source, `export NPM_CONFIG_PREFIX="$OPENCLAW_DIR/npm"`) {
-		t.Fatalf("openclaw install script should isolate npm prefix under OPENCLAW_DIR")
-	}
-	if !strings.Contains(source, `export npm_config_prefix="$NPM_CONFIG_PREFIX"`) {
-		t.Fatalf("openclaw install script should set lowercase npm prefix env")
-	}
-	if !strings.Contains(source, `"$OPENCLAW_DIR/bin/openclaw"`) {
-		t.Fatalf("openclaw install script should create a managed executable under OPENCLAW_DIR/bin")
-	}
-	if !strings.Contains(source, `"$NPM_CONFIG_PREFIX"/bin/openclaw`) {
-		t.Fatalf("openclaw install script should only source npm bin from OpenClaw's isolated prefix")
-	}
-	if !strings.Contains(source, `export PATH="$OPENCLAW_DIR/bin`) {
-		t.Fatalf("openclaw install script should prefer OPENCLAW_DIR/bin on PATH")
-	}
-	if strings.Contains(source, `$HOME/.hermes/node/bin`) {
-		t.Fatalf("openclaw install script should not hardcode the Hermes-managed node bin path")
-	}
-	if !strings.Contains(source, `npm prefix -g`) || !strings.Contains(source, `npm config get prefix`) {
-		t.Fatalf("openclaw install script should discover npm global bin dynamically")
-	}
-	if !strings.Contains(source, `openclaw daemon start`) {
-		t.Fatalf("openclaw install script should try to start the daemon after install")
+	for _, notWant := range []string{
+		`export OPENCLAW_DIR=%s`,
+		`export OPENCLAW_CONFIG_PATH="$OPENCLAW_DIR/openclaw.json"`,
+		`export NPM_CONFIG_PREFIX="$OPENCLAW_DIR/npm"`,
+		`export npm_config_prefix="$NPM_CONFIG_PREFIX"`,
+		`"$OPENCLAW_DIR/bin/openclaw"`,
+		`$HOME/.hermes/node/bin`,
+		`npm prefix -g`,
+		`npm config get prefix`,
+		`openclaw daemon start`,
+		`json5`,
+	} {
+		if strings.Contains(source, notWant) {
+			t.Fatalf("openclaw install script should stay close to official install.sh and not contain %q", notWant)
+		}
 	}
 }
 
