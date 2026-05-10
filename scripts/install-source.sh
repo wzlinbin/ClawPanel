@@ -350,8 +350,8 @@ install_openclaw_gateway() {
   curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
   export PATH="$HOME/.openclaw/bin:$PATH"
   loginctl enable-linger $(whoami)
-  openclaw gateway install
-  openclaw gateway start
+  export XDG_RUNTIME_DIR=/run/user/$(id -u)
+  openclaw gateway --allow-unconfigured
 }
 
 install_hermes_gateway() {
@@ -453,13 +453,7 @@ main() {
   step 3 7 "写入默认配置..."
   write_default_config "$service_home"
 
-  step 4 7 "安装 OpenClaw Gateway..."
-  install_openclaw_gateway
-
-  step 5 7 "安装 Hermes Gateway..."
-  install_hermes_gateway
-
-  step 6 7 "注册系统服务并配置防火墙..."
+  step 4 7 "注册系统服务并配置防火墙..."
   if [[ "$sys_os" == "linux" ]] && command -v systemctl >/dev/null 2>&1; then
     register_linux_service "$service_user" "$service_group" "$service_home"
   elif [[ "$sys_os" == "darwin" ]]; then
@@ -469,8 +463,15 @@ main() {
   fi
   open_firewall
 
-  step 7 7 "启动 ClawPanel..."
+  step 5 7 "启动 ClawPanel..."
   start_service "$sys_os"
+
+  step 6 7 "安装 OpenClaw Gateway..."
+  install_openclaw_gateway
+
+  step 7 7 "安装 Hermes Gateway..."
+  install_hermes_gateway
+
   print_result "$sys_os"
 }
 
