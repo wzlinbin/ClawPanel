@@ -1355,6 +1355,11 @@ export HOME="${HOME:-$(cd ~ && pwd)}"
 echo "Installing OpenClaw with official install.sh..."
 curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install.sh | bash -s -- --no-onboard
 echo "OpenClaw official install.sh completed"
+export PATH="$HOME/.openclaw/bin:$PATH"
+echo "Installing OpenClaw Gateway..."
+openclaw gateway install
+echo "Starting OpenClaw Gateway..."
+openclaw gateway start
 `
 
 		case "napcat":

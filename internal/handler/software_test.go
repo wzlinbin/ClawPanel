@@ -129,6 +129,15 @@ func TestOpenClawInstallScriptUsesOfficialInstaller(t *testing.T) {
 	if !strings.Contains(source, `--no-onboard`) {
 		t.Fatalf("openclaw install script should skip interactive onboarding")
 	}
+	for _, want := range []string{
+		`export PATH="$HOME/.openclaw/bin:$PATH"`,
+		`openclaw gateway install`,
+		`openclaw gateway start`,
+	} {
+		if !strings.Contains(source, want) {
+			t.Fatalf("openclaw install script should contain %q", want)
+		}
+	}
 	for _, notWant := range []string{
 		`export OPENCLAW_DIR=%s`,
 		`export OPENCLAW_CONFIG_PATH="$OPENCLAW_DIR/openclaw.json"`,
