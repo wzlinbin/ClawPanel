@@ -2272,22 +2272,72 @@ hermes update`, true
 		return "Hermes Gateway Install", `set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-hermes gateway install`, true
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  hermes gateway install
+else
+  echo "⚠️ 当前环境没有可用的 systemd user bus，跳过 hermes gateway install"
+  echo "ℹ️ 可直接执行 Gateway Start，面板会使用后台进程方式启动"
+fi`, true
 	case "gateway-start":
 		return "Hermes Gateway Start", `set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-hermes gateway start`, true
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  hermes gateway start
+else
+  mkdir -p "$HOME/.local/share/hermes-agent"
+  nohup hermes gateway run >"$HOME/.local/share/hermes-agent/gateway.log" 2>&1 &
+  gateway_pid="$!"
+  echo "$gateway_pid" >"$HOME/.local/share/hermes-agent/gateway.pid"
+  sleep 2
+  if ! kill -0 "$gateway_pid" >/dev/null 2>&1; then
+    echo "❌ Hermes Gateway 后台启动失败，最近日志如下："
+    tail -n 40 "$HOME/.local/share/hermes-agent/gateway.log" 2>/dev/null || true
+    exit 1
+  fi
+  echo "✅ Hermes Gateway 已在后台启动 (PID $gateway_pid)"
+fi`, true
 	case "gateway-stop":
 		return "Hermes Gateway Stop", `set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-hermes gateway stop`, true
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  hermes gateway stop
+elif [ -s "$HOME/.local/share/hermes-agent/gateway.pid" ]; then
+  gateway_pid="$(cat "$HOME/.local/share/hermes-agent/gateway.pid")"
+  kill "$gateway_pid" 2>/dev/null || true
+  rm -f "$HOME/.local/share/hermes-agent/gateway.pid"
+  echo "✅ Hermes Gateway 后台进程已停止"
+else
+  pkill -f "hermes gateway run" 2>/dev/null || true
+  echo "✅ 已尝试停止 Hermes Gateway 后台进程"
+fi`, true
 	case "gateway-restart":
 		return "Hermes Gateway Restart", `set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"
 export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-hermes gateway restart`, true
+if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+  hermes gateway restart
+else
+  if [ -s "$HOME/.local/share/hermes-agent/gateway.pid" ]; then
+    gateway_pid="$(cat "$HOME/.local/share/hermes-agent/gateway.pid")"
+    kill "$gateway_pid" 2>/dev/null || true
+    rm -f "$HOME/.local/share/hermes-agent/gateway.pid"
+  else
+    pkill -f "hermes gateway run" 2>/dev/null || true
+  fi
+  mkdir -p "$HOME/.local/share/hermes-agent"
+  nohup hermes gateway run >"$HOME/.local/share/hermes-agent/gateway.log" 2>&1 &
+  gateway_pid="$!"
+  echo "$gateway_pid" >"$HOME/.local/share/hermes-agent/gateway.pid"
+  sleep 2
+  if ! kill -0 "$gateway_pid" >/dev/null 2>&1; then
+    echo "❌ Hermes Gateway 后台启动失败，最近日志如下："
+    tail -n 40 "$HOME/.local/share/hermes-agent/gateway.log" 2>/dev/null || true
+    exit 1
+  fi
+  echo "✅ Hermes Gateway 已重启 (PID $gateway_pid)"
+fi`, true
 	case "claw-migrate":
 		return "Hermes OpenClaw Migration", `set -e
 export HOME="${HOME:-$(cd ~ && pwd)}"

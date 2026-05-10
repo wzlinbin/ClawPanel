@@ -144,6 +144,9 @@ func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
 		`hermes setup`,
 		`hermes gateway install`,
 		`hermes gateway start`,
+		`systemctl --user show-environment`,
+		`hermes gateway run`,
+		`gateway.pid`,
 	} {
 		if !strings.Contains(source, want) {
 			t.Fatalf("hermes install script should contain %q", want)

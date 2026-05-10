@@ -41,6 +41,32 @@ func TestBuildHermesActionScript(t *testing.T) {
 	}
 }
 
+func TestBuildHermesGatewayActionsFallbackWithoutUserSystemd(t *testing.T) {
+	t.Parallel()
+
+	for _, action := range []string{"gateway-install", "gateway-start", "gateway-stop", "gateway-restart"} {
+		name, script, ok := buildHermesActionScript(action)
+		if !ok {
+			t.Fatalf("expected %s action to be supported", action)
+		}
+		if name == "" || script == "" {
+			t.Fatalf("expected non-empty task name and script for %s", action)
+		}
+		if !strings.Contains(script, "systemctl --user show-environment") {
+			t.Fatalf("%s should probe user systemd before using gateway service commands", action)
+		}
+	}
+
+	for _, action := range []string{"gateway-start", "gateway-restart"} {
+		_, script, _ := buildHermesActionScript(action)
+		for _, want := range []string{"hermes gateway run", "gateway.pid", "gateway.log"} {
+			if !strings.Contains(script, want) {
+				t.Fatalf("%s fallback should contain %q", action, want)
+			}
+		}
+	}
+}
+
 func TestBuildHermesPairingApproveScript(t *testing.T) {
 	t.Parallel()
 

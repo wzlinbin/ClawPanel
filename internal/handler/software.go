@@ -1410,12 +1410,42 @@ run_hermes_post_install() {
   hermes setup
 
   echo "📦 安装 Hermes Gateway..."
-  hermes gateway install
+  if hermes_user_systemd_available; then
+    hermes gateway install
 
-  echo "🚀 启动 Hermes Gateway..."
-  hermes gateway start
+    echo "🚀 启动 Hermes Gateway..."
+    hermes gateway start
+  else
+    echo "⚠️ 当前环境没有可用的 systemd user bus，跳过 hermes gateway install"
+    start_hermes_gateway_background
+  fi
 
   echo "✅ Hermes 初始化与消息网关启动完成"
+}
+
+hermes_user_systemd_available() {
+  command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1
+}
+
+start_hermes_gateway_background() {
+  if ! command -v nohup >/dev/null 2>&1; then
+    echo "❌ 当前环境缺少 nohup，无法后台启动 Hermes Gateway"
+    return 1
+  fi
+  echo "🚀 使用后台进程启动 Hermes Gateway..."
+  mkdir -p "$HOME/.local/share/hermes-agent"
+  nohup hermes gateway run >"$HOME/.local/share/hermes-agent/gateway.log" 2>&1 &
+  gateway_pid="$!"
+  echo "$gateway_pid" >"$HOME/.local/share/hermes-agent/gateway.pid"
+  sleep 2
+  if kill -0 "$gateway_pid" >/dev/null 2>&1; then
+    echo "✅ Hermes Gateway 已在后台启动 (PID $gateway_pid)"
+    echo "ℹ️ 日志: $HOME/.local/share/hermes-agent/gateway.log"
+    return 0
+  fi
+  echo "❌ Hermes Gateway 后台启动失败，最近日志如下："
+  tail -n 40 "$HOME/.local/share/hermes-agent/gateway.log" 2>/dev/null || true
+  return 1
 }
 
 echo "📦 安装 Hermes Agent..."
