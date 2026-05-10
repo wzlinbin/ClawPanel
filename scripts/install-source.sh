@@ -343,6 +343,27 @@ open_firewall() {
   fi
 }
 
+install_openclaw_gateway() {
+  export HOME="${service_home:-${HOME:-/root}}"
+  export PATH="$HOME/.openclaw/bin:$PATH"
+
+  curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
+  export PATH="$HOME/.openclaw/bin:$PATH"
+  openclaw gateway install
+  openclaw gateway start
+}
+
+install_hermes_gateway() {
+  export HOME="${service_home:-${HOME:-/root}}"
+  export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+  curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+  export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+  hermes setup
+  hermes gateway install
+  hermes gateway start
+}
+
 start_service() {
   local os="$1"
   if [[ "$os" == "linux" ]] && command -v systemctl >/dev/null 2>&1; then
@@ -421,17 +442,23 @@ main() {
   info "服务用户：${service_user}:${service_group}"
   echo ""
 
-  step 1 5 "下载 ClawPanel 二进制..."
+  step 1 7 "下载 ClawPanel 二进制..."
   download_binary
 
-  step 2 5 "停止旧服务并覆盖二进制..."
+  step 2 7 "停止旧服务并覆盖二进制..."
   stop_existing_service "$sys_os"
   install_binary "$DOWNLOADED_BINARY" "$service_user" "$service_group"
 
-  step 3 5 "写入默认配置..."
+  step 3 7 "写入默认配置..."
   write_default_config "$service_home"
 
-  step 4 5 "注册系统服务并配置防火墙..."
+  step 4 7 "安装 OpenClaw Gateway..."
+  install_openclaw_gateway
+
+  step 5 7 "安装 Hermes Gateway..."
+  install_hermes_gateway
+
+  step 6 7 "注册系统服务并配置防火墙..."
   if [[ "$sys_os" == "linux" ]] && command -v systemctl >/dev/null 2>&1; then
     register_linux_service "$service_user" "$service_group" "$service_home"
   elif [[ "$sys_os" == "darwin" ]]; then
@@ -441,7 +468,7 @@ main() {
   fi
   open_firewall
 
-  step 5 5 "启动 ClawPanel..."
+  step 7 7 "启动 ClawPanel..."
   start_service "$sys_os"
   print_result "$sys_os"
 }

@@ -197,6 +197,15 @@ func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
 	if strings.Contains(source, `echo "ℹ️ 下一步建议运行: hermes setup"`) {
 		t.Fatalf("hermes install script should run setup instead of only suggesting it")
 	}
+	setupIndex := strings.Index(source, `hermes setup`)
+	gatewayInstallIndex := strings.Index(source, `hermes gateway install`)
+	gatewayStartIndex := strings.Index(source, `hermes gateway start`)
+	if setupIndex < 0 || gatewayInstallIndex < 0 || gatewayStartIndex < 0 {
+		t.Fatalf("hermes install script missing setup/gateway commands")
+	}
+	if !(setupIndex < gatewayInstallIndex && gatewayInstallIndex < gatewayStartIndex) {
+		t.Fatalf("hermes install script should run hermes setup before gateway install/start")
+	}
 }
 
 func TestHermesInstallScriptDoesNotUseSystemServiceFallback(t *testing.T) {
