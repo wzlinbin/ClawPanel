@@ -184,6 +184,25 @@ func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
 	}
 }
 
+func TestHermesInstallScriptDoesNotUseSystemServiceFallback(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("software.go")
+	if err != nil {
+		t.Fatalf("read software.go: %v", err)
+	}
+	source := string(raw)
+	for _, notWant := range []string{
+		`hermes gateway install --system`,
+		`hermes gateway start --system`,
+		`systemctl list-unit-files`,
+	} {
+		if strings.Contains(source, notWant) {
+			t.Fatalf("hermes install script should follow panel fallback logic and not contain %q", notWant)
+		}
+	}
+}
+
 func TestDefaultOpenClawChannelPluginIDsIncludesAllChannelCards(t *testing.T) {
 	t.Parallel()
 
