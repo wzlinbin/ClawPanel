@@ -1356,10 +1356,61 @@ echo "Installing OpenClaw with official install.sh..."
 curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install.sh | bash -s -- --no-onboard
 echo "OpenClaw official install.sh completed"
 export PATH="$HOME/.openclaw/bin:$PATH"
+
+openclaw_gateway_needs_background() {
+  log_file="$1"
+  grep -Eiq 'systemctl --user unavailable|Failed to connect to bus|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|systemd user services are unavailable|run the gateway in the foreground' "$log_file"
+}
+
+start_openclaw_gateway_background() {
+  mkdir -p "$HOME/.openclaw"
+  pid_file="$HOME/.openclaw/gateway.pid"
+  log_file="$HOME/.openclaw/gateway.log"
+  if [ -s "$pid_file" ]; then
+    old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+    if [ -n "$old_pid" ] && kill -0 "$old_pid" >/dev/null 2>&1; then
+      echo "OpenClaw Gateway already running in background (PID $old_pid)"
+      return 0
+    fi
+  fi
+  echo "Starting OpenClaw Gateway as a background process..."
+  nohup openclaw gateway >"$log_file" 2>&1 &
+  gateway_pid="$!"
+  echo "$gateway_pid" >"$pid_file"
+  sleep 2
+  if ! kill -0 "$gateway_pid" >/dev/null 2>&1; then
+    echo "OpenClaw Gateway background start failed. Recent log:"
+    tail -n 80 "$log_file" 2>/dev/null || true
+    exit 1
+  fi
+  echo "OpenClaw Gateway started in background (PID $gateway_pid)"
+}
+
 echo "Installing OpenClaw Gateway..."
-openclaw gateway install
+gateway_install_log="$(mktemp)"
+if openclaw gateway install 2>&1 | tee "$gateway_install_log"; then
+  gateway_install_fallback=0
+else
+  gateway_install_status=$?
+  if openclaw_gateway_needs_background "$gateway_install_log"; then
+    gateway_install_fallback=1
+    echo "OpenClaw Gateway systemd user service is unavailable; will use background gateway process."
+  else
+    exit "$gateway_install_status"
+  fi
+fi
 echo "Starting OpenClaw Gateway..."
-openclaw gateway start
+gateway_start_log="$(mktemp)"
+if openclaw gateway start 2>&1 | tee "$gateway_start_log"; then
+  :
+else
+  gateway_start_status=$?
+  if [ "${gateway_install_fallback:-0}" = "1" ] || openclaw_gateway_needs_background "$gateway_start_log"; then
+    start_openclaw_gateway_background
+  else
+    exit "$gateway_start_status"
+  fi
+fi
 `
 
 		case "napcat":

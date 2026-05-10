@@ -10,6 +10,31 @@ import (
 	"github.com/zhaoxinyi02/ClawPanel/internal/config"
 )
 
+func readSoftwareSource(t *testing.T) string {
+	t.Helper()
+	raw, err := os.ReadFile("software.go")
+	if err != nil {
+		t.Fatalf("read software.go: %v", err)
+	}
+	return string(raw)
+}
+
+func softwareCaseSource(t *testing.T, caseID string) string {
+	t.Helper()
+	source := readSoftwareSource(t)
+	startMarker := `case "` + caseID + `":`
+	start := strings.Index(source, startMarker)
+	if start < 0 {
+		t.Fatalf("missing %s", startMarker)
+	}
+	rest := source[start+len(startMarker):]
+	end := strings.Index(rest, "\n\t\tcase ")
+	if end < 0 {
+		return rest
+	}
+	return rest[:end]
+}
+
 func TestBuildNapCatInstallScriptUsesConfiguredQQToken(t *testing.T) {
 	t.Parallel()
 
@@ -102,11 +127,7 @@ func TestDetectPythonVersionFallsBackToPyLauncher(t *testing.T) {
 func TestHermesInstallScriptUsesRuntimeHomeFallback(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("software.go")
-	if err != nil {
-		t.Fatalf("read software.go: %v", err)
-	}
-	source := string(raw)
+	source := softwareCaseSource(t, "hermes")
 	if strings.Contains(source, `export HOME="${HOME:-/root}"`) {
 		t.Fatalf("hermes install script should not hardcode /root home fallback")
 	}
@@ -118,11 +139,7 @@ func TestHermesInstallScriptUsesRuntimeHomeFallback(t *testing.T) {
 func TestOpenClawInstallScriptUsesOfficialInstaller(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("software.go")
-	if err != nil {
-		t.Fatalf("read software.go: %v", err)
-	}
-	source := string(raw)
+	source := softwareCaseSource(t, "openclaw")
 	if !strings.Contains(source, `curl -fsSL --proto '=https' --tlsv1.2 https://openclaw.ai/install.sh | bash -s -- --no-onboard`) {
 		t.Fatalf("openclaw install script should use the official installer")
 	}
@@ -133,6 +150,13 @@ func TestOpenClawInstallScriptUsesOfficialInstaller(t *testing.T) {
 		`export PATH="$HOME/.openclaw/bin:$PATH"`,
 		`openclaw gateway install`,
 		`openclaw gateway start`,
+		`openclaw_gateway_needs_background`,
+		`systemctl --user unavailable`,
+		`DBUS_SESSION_BUS_ADDRESS`,
+		`XDG_RUNTIME_DIR`,
+		`nohup openclaw gateway >"$log_file" 2>&1 &`,
+		`$HOME/.openclaw/gateway.pid`,
+		`$HOME/.openclaw/gateway.log`,
 	} {
 		if !strings.Contains(source, want) {
 			t.Fatalf("openclaw install script should contain %q", want)
@@ -159,11 +183,7 @@ func TestOpenClawInstallScriptUsesOfficialInstaller(t *testing.T) {
 func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("software.go")
-	if err != nil {
-		t.Fatalf("read software.go: %v", err)
-	}
-	source := string(raw)
+	source := softwareCaseSource(t, "hermes")
 	for _, want := range []string{
 		`run_hermes_post_install()`,
 		`hermes setup`,
@@ -182,11 +202,7 @@ func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
 func TestHermesInstallScriptDoesNotUseSystemServiceFallback(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("software.go")
-	if err != nil {
-		t.Fatalf("read software.go: %v", err)
-	}
-	source := string(raw)
+	source := softwareCaseSource(t, "hermes")
 	for _, notWant := range []string{
 		`hermes gateway install --system`,
 		`hermes gateway start --system`,
