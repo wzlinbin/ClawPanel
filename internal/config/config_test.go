@@ -506,6 +506,27 @@ func TestComputeRuntimeExtraBinPathsForWindowsIncludesCommonRuntimeDirs(t *testi
 	}
 }
 
+func TestComputeRuntimeExtraBinPathsForUnixIncludesOpenClawBin(t *testing.T) {
+	t.Parallel()
+
+	home := "/home/alice"
+	paths := computeRuntimeExtraBinPathsForOS("linux", home)
+	wants := []string{
+		filepath.Join(home, ".openclaw", "bin"),
+		filepath.Join(home, ".openclaw", "npm", "bin"),
+	}
+
+	set := map[string]bool{}
+	for _, item := range paths {
+		set[item] = true
+	}
+	for _, want := range wants {
+		if !set[want] {
+			t.Fatalf("expected unix runtime path list to include %q, got %#v", want, paths)
+		}
+	}
+}
+
 func TestWriteOpenClawJSONMaterializesDiskOnlyLegacyDefault(t *testing.T) {
 	t.Parallel()
 

@@ -212,6 +212,8 @@ func computeRuntimeExtraBinPathsForOS(goos, home string) []string {
 		"/opt/homebrew/bin",
 		"/opt/homebrew/sbin",
 		filepath.Join(home, "bin"),
+		filepath.Join(home, ".openclaw", "bin"),
+		filepath.Join(home, ".openclaw", "npm", "bin"),
 		filepath.Join(home, ".local", "bin"),
 		filepath.Join(home, ".npm-global", "bin"),
 		filepath.Join(home, ".volta", "bin"),

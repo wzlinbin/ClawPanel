@@ -1349,19 +1349,107 @@ echo "✅ $(python3 --version) 安装完成"
 			}
 		case "openclaw":
 			taskName = "安装 OpenClaw"
-			script = `
+			openClawDir := strings.TrimSpace(cfg.OpenClawDir)
+			if openClawDir == "" {
+				if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
+					openClawDir = filepath.Join(home, ".openclaw")
+				} else {
+					openClawDir = "/root/.openclaw"
+				}
+			}
+			script = fmt.Sprintf(`
 set -e
-export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+export HOME="${HOME:-$(cd ~ && pwd)}"
+export OPENCLAW_DIR=%s
+export OPENCLAW_STATE_DIR="$OPENCLAW_DIR"
+export OPENCLAW_CONFIG_PATH="$OPENCLAW_DIR/openclaw.json"
+export NPM_CONFIG_PREFIX="$OPENCLAW_DIR/npm"
+export npm_config_prefix="$NPM_CONFIG_PREFIX"
+mkdir -p "$OPENCLAW_DIR/bin" "$NPM_CONFIG_PREFIX"
 
-if command -v openclaw >/dev/null 2>&1; then
+npm_global_bin_dir() {
+  local prefix=""
+  prefix="$(npm prefix -g 2>/dev/null || true)"
+  if [ -n "$prefix" ] && [ "$prefix" != "undefined" ] && [ "$prefix" != "null" ]; then
+    printf '%%s/bin\n' "${prefix%%/}"
+    return 0
+  fi
+  prefix="$(npm config get prefix 2>/dev/null || true)"
+  if [ -n "$prefix" ] && [ "$prefix" != "undefined" ] && [ "$prefix" != "null" ]; then
+    printf '%%s/bin\n' "${prefix%%/}"
+    return 0
+  fi
+  return 1
+}
+
+npm_bin="$(npm_global_bin_dir || true)"
+export PATH="$OPENCLAW_DIR/bin${npm_bin:+:$npm_bin}:$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+
+is_openclaw_managed_bin() {
+  case "$1" in
+    "$OPENCLAW_DIR"/bin/openclaw|"$NPM_CONFIG_PREFIX"/bin/openclaw)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+ensure_openclaw_managed_bin() {
+  local source_bin=""
+  local npm_bin=""
+  npm_bin="$(npm_global_bin_dir || true)"
+  if [ -n "$npm_bin" ] && [ -x "$npm_bin/openclaw" ]; then
+    source_bin="$npm_bin/openclaw"
+  fi
+  for candidate in \
+    "$NPM_CONFIG_PREFIX/bin/openclaw"
+  do
+    if [ -n "$source_bin" ]; then
+      break
+    fi
+    if [ -x "$candidate" ]; then
+      source_bin="$candidate"
+      break
+    fi
+  done
+  if [ -z "$source_bin" ]; then
+    source_bin="$(PATH="${npm_bin:+$npm_bin:}$NPM_CONFIG_PREFIX/bin:$PATH" command -v openclaw 2>/dev/null || true)"
+  fi
+  if [ -z "$source_bin" ]; then
+    return 1
+  fi
+  if [ "$source_bin" = "$OPENCLAW_DIR/bin/openclaw" ]; then
+    return 0
+  fi
+  rm -f "$OPENCLAW_DIR/bin/openclaw"
+  if ln -s "$source_bin" "$OPENCLAW_DIR/bin/openclaw" 2>/dev/null; then
+    return 0
+  fi
+  cat > "$OPENCLAW_DIR/bin/openclaw" <<EOF
+#!/bin/sh
+exec "$source_bin" "\$@"
+EOF
+  chmod +x "$OPENCLAW_DIR/bin/openclaw"
+}
+
+existing_openclaw="$(command -v openclaw 2>/dev/null || true)"
+if [ -n "$existing_openclaw" ] && is_openclaw_managed_bin "$existing_openclaw"; then
+  ensure_openclaw_managed_bin || true
   echo "⚠️ OpenClaw 已安装: $(openclaw --version 2>/dev/null || echo installed)"
   exit 0
+elif [ -n "$existing_openclaw" ]; then
+  echo "ℹ️ 检测到外部 OpenClaw: $existing_openclaw"
+  echo "ℹ️ ClawPanel 将使用独立 npm prefix 安装到: $NPM_CONFIG_PREFIX"
 fi
 
 echo "📦 通过 OpenClaw 官方安装脚本安装..."
 curl -fsSL https://openclaw.ai/install.sh | OPENCLAW_NO_ONBOARD=1 bash -s -- --no-onboard
 
-export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
+ensure_openclaw_managed_bin || true
+npm_bin="$(npm_global_bin_dir || true)"
+export PATH="$OPENCLAW_DIR/bin${npm_bin:+:$npm_bin}:$HOME/.local/bin:/usr/local/bin:$PATH"
 if command -v openclaw >/dev/null 2>&1; then
   echo "✅ OpenClaw $(openclaw --version 2>/dev/null || echo installed) 安装完成"
   openclaw init 2>/dev/null || true
@@ -1379,7 +1467,7 @@ fi
 
 echo "❌ OpenClaw 安装完成后仍未检测到 openclaw 命令"
 exit 1
-`
+`, shellQuote(openClawDir))
 
 		case "napcat":
 			taskName = "安装 NapCat (QQ个人号)"
