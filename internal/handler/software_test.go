@@ -171,9 +171,6 @@ func TestHermesInstallScriptRunsPostInstallSetupAndGateway(t *testing.T) {
 		`hermes setup`,
 		`hermes gateway install`,
 		`hermes gateway start`,
-		`systemctl --user show-environment`,
-		`hermes gateway run`,
-		`gateway.pid`,
 	} {
 		if !strings.Contains(source, want) {
 			t.Fatalf("hermes install script should contain %q", want)
@@ -196,20 +193,60 @@ func TestHermesInstallScriptDoesNotUseSystemServiceFallback(t *testing.T) {
 		`hermes gateway install --system`,
 		`hermes gateway start --system`,
 		`systemctl list-unit-files`,
+		`systemctl --user show-environment`,
+		`prepare_hermes_user_systemd_env`,
+		`XDG_RUNTIME_DIR`,
+		`DBUS_SESSION_BUS_ADDRESS`,
+		`hermes gateway run`,
+		`gateway.pid`,
+		`跳过 hermes gateway install`,
 	} {
 		if strings.Contains(source, notWant) {
-			t.Fatalf("hermes install script should follow panel fallback logic and not contain %q", notWant)
+			t.Fatalf("hermes install script should run gateway install/start directly and not contain %q", notWant)
 		}
 	}
 }
 
-func TestDefaultOpenClawChannelPluginIDsIncludesAllChannelCards(t *testing.T) {
+func TestDefaultOpenClawPostInstallPluginsUseOfficialCommands(t *testing.T) {
 	t.Parallel()
 
-	got := strings.Join(defaultOpenClawChannelPluginIDs(), ",")
-	want := "qq,qqbot,feishu,wecom,dingtalk"
-	if got != want {
-		t.Fatalf("default channel plugins = %q, want %q", got, want)
+	got := defaultOpenClawPostInstallPlugins()
+	if len(got) != 2 {
+		t.Fatalf("default post-install plugin count = %d, want 2", len(got))
+	}
+	want := map[string]string{
+		"qqbot":           "openclaw plugins install @openclaw/qqbot",
+		"openclaw-weixin": "npx -y @tencent-weixin/openclaw-weixin-cli install",
+	}
+	for _, item := range got {
+		if want[item.ID] != item.Command {
+			t.Fatalf("unexpected post-install plugin command for %s: %q", item.ID, item.Command)
+		}
+	}
+}
+
+func TestOpenClawPostInstallPluginScriptUsesOnlyQQBotAndWeixin(t *testing.T) {
+	t.Parallel()
+
+	script := buildOpenClawPostInstallPluginScript()
+	for _, want := range []string{
+		`openclaw plugins install @openclaw/qqbot`,
+		`npx -y @tencent-weixin/openclaw-weixin-cli install`,
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("post-install plugin script should contain %q", want)
+		}
+	}
+	for _, notWant := range []string{
+		`official/qq`,
+		`official/feishu`,
+		`openclaw-lark`,
+		`@wecom/wecom-openclaw-plugin`,
+		`@largezhou/ddingtalk`,
+	} {
+		if strings.Contains(script, notWant) {
+			t.Fatalf("post-install plugin script should not contain %q", notWant)
+		}
 	}
 }
 

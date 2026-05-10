@@ -1498,42 +1498,12 @@ run_hermes_post_install() {
   hermes setup
 
   echo "📦 安装 Hermes Gateway..."
-  if hermes_user_systemd_available; then
-    hermes gateway install
+  hermes gateway install
 
-    echo "🚀 启动 Hermes Gateway..."
-    hermes gateway start
-  else
-    echo "⚠️ 当前环境没有可用的 systemd user bus，跳过 hermes gateway install"
-    start_hermes_gateway_background
-  fi
+  echo "🚀 启动 Hermes Gateway..."
+  hermes gateway start
 
   echo "✅ Hermes 初始化与消息网关启动完成"
-}
-
-hermes_user_systemd_available() {
-  command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1
-}
-
-start_hermes_gateway_background() {
-  if ! command -v nohup >/dev/null 2>&1; then
-    echo "❌ 当前环境缺少 nohup，无法后台启动 Hermes Gateway"
-    return 1
-  fi
-  echo "🚀 使用后台进程启动 Hermes Gateway..."
-  mkdir -p "$HOME/.local/share/hermes-agent"
-  nohup hermes gateway run >"$HOME/.local/share/hermes-agent/gateway.log" 2>&1 &
-  gateway_pid="$!"
-  echo "$gateway_pid" >"$HOME/.local/share/hermes-agent/gateway.pid"
-  sleep 2
-  if kill -0 "$gateway_pid" >/dev/null 2>&1; then
-    echo "✅ Hermes Gateway 已在后台启动 (PID $gateway_pid)"
-    echo "ℹ️ 日志: $HOME/.local/share/hermes-agent/gateway.log"
-    return 0
-  fi
-  echo "❌ Hermes Gateway 后台启动失败，最近日志如下："
-  tail -n 40 "$HOME/.local/share/hermes-agent/gateway.log" 2>/dev/null || true
-  return 1
 }
 
 echo "📦 安装 Hermes Agent..."
@@ -1589,7 +1559,7 @@ exit 1
 				err = tm.RunScript(task, script)
 			}
 			if err == nil && req.Software == "openclaw" {
-				err = installDefaultChannelPluginsAfterOpenClawInstall(pm, task.AppendLog)
+				err = tm.RunScript(task, buildOpenClawPostInstallPluginScript())
 			}
 			tm.FinishTask(task, err)
 		}()
@@ -1619,34 +1589,32 @@ func GetPanelTaskDetail(tm *taskman.Manager) gin.HandlerFunc {
 	}
 }
 
-func installDefaultChannelPluginsAfterOpenClawInstall(pm *plugin.Manager, logf func(string)) error {
-	if pm == nil {
-		return nil
-	}
-	var failures []string
-	for _, pluginID := range defaultOpenClawChannelPluginIDs() {
-		if logf != nil {
-			logf("📦 安装/更新通道插件: " + pluginID)
-		}
-		if pm.GetPlugin(pluginID) != nil {
-			if err := pm.Update(pluginID); err != nil {
-				failures = append(failures, fmt.Sprintf("%s: %v", pluginID, err))
-				continue
-			}
-			continue
-		}
-		if err := pm.InstallWithProgress(pluginID, "", logf); err != nil {
-			failures = append(failures, fmt.Sprintf("%s: %v", pluginID, err))
-		}
-	}
-	if len(failures) > 0 {
-		return fmt.Errorf("部分通道插件安装/更新失败: %s", strings.Join(failures, "; "))
-	}
-	return nil
+type openClawPostInstallPlugin struct {
+	ID      string
+	Command string
 }
 
-func defaultOpenClawChannelPluginIDs() []string {
-	return []string{"qq", "qqbot", "feishu", "wecom", "dingtalk"}
+func defaultOpenClawPostInstallPlugins() []openClawPostInstallPlugin {
+	return []openClawPostInstallPlugin{
+		{ID: "qqbot", Command: "openclaw plugins install @openclaw/qqbot"},
+		{ID: "openclaw-weixin", Command: "npx -y @tencent-weixin/openclaw-weixin-cli install"},
+	}
+}
+
+func buildOpenClawPostInstallPluginScript() string {
+	var b strings.Builder
+	b.WriteString(`set -e
+export HOME="${HOME:-$(cd ~ && pwd)}"
+export PATH="$HOME/.openclaw/bin:$HOME/.openclaw/npm/bin:$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+`)
+	for _, item := range defaultOpenClawPostInstallPlugins() {
+		b.WriteString("\necho \"📦 安装 OpenClaw 后置插件: ")
+		b.WriteString(item.ID)
+		b.WriteString("\"\n")
+		b.WriteString(item.Command)
+		b.WriteString("\n")
+	}
+	return b.String()
 }
 
 func getSudoPass(cfg *config.Config) string {

@@ -41,7 +41,7 @@ func TestBuildHermesActionScript(t *testing.T) {
 	}
 }
 
-func TestBuildHermesGatewayActionsFallbackWithoutUserSystemd(t *testing.T) {
+func TestBuildHermesGatewayActionsPrepareUserSystemdEnv(t *testing.T) {
 	t.Parallel()
 
 	for _, action := range []string{"gateway-install", "gateway-start", "gateway-stop", "gateway-restart"} {
@@ -52,8 +52,13 @@ func TestBuildHermesGatewayActionsFallbackWithoutUserSystemd(t *testing.T) {
 		if name == "" || script == "" {
 			t.Fatalf("expected non-empty task name and script for %s", action)
 		}
-		if !strings.Contains(script, "systemctl --user show-environment") {
-			t.Fatalf("%s should probe user systemd before using gateway service commands", action)
+		for _, want := range []string{"prepare_hermes_user_systemd_env", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "/run/user/$uid"} {
+			if !strings.Contains(script, want) {
+				t.Fatalf("%s should prepare user systemd env and contain %q", action, want)
+			}
+		}
+		if strings.Contains(script, "跳过 hermes gateway install") {
+			t.Fatalf("%s should not skip gateway install before trying the Hermes command", action)
 		}
 	}
 
