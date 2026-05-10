@@ -345,14 +345,11 @@ open_firewall() {
 
 install_openclaw_gateway() {
   export HOME="${service_home:-${HOME:-/root}}"
-  export PATH="$HOME/.openclaw/bin:$PATH"
 
   curl -fsSL https://openclaw.ai/install.sh | bash -s -- --no-onboard
-  export PATH="$HOME/.openclaw/bin:$PATH"
   loginctl enable-linger $(whoami)
   export XDG_RUNTIME_DIR=/run/user/$(id -u)
   nohup openclaw gateway --allow-unconfigured > ~/gateway.log 2>&1 &
-  openclaw plugins install @openclaw/qqbot
 }
 
 install_hermes_gateway() {
