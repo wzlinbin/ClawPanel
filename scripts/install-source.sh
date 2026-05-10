@@ -352,6 +352,7 @@ install_openclaw_gateway() {
   loginctl enable-linger $(whoami)
   export XDG_RUNTIME_DIR=/run/user/$(id -u)
   openclaw gateway --allow-unconfigured
+  openclaw plugins install @openclaw/qqbot
 }
 
 install_hermes_gateway() {

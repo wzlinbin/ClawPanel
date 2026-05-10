@@ -29,7 +29,7 @@ interface OpenClawModels {
 }
 
 const API2CN_PROVIDER_ID = 'api2cn';
-const API2CN_BASE_URL = 'https://api.api2cn.com';
+const API2CN_BASE_URL = 'https://api.api2cn.com/v1';
 const API2CN_MODEL_LIST_BASE_URL = 'https://api.api2cn.com/v1';
 const normalizeProviderModels = (models?: ProviderModel[]) => {
   const values = (models || [])
@@ -63,7 +63,7 @@ const buildModelConfig = (model: Record<string, any> | undefined, apiKey: string
     ...removeLegacyModelKeys(model || {}),
     base_url: API2CN_BASE_URL,
     api_key: apiKey,
-    provider: String(model?.provider || 'auto').trim() || 'auto',
+    provider: 'custom',
   };
   delete (next as Record<string, any>).headers;
   return next;
@@ -302,10 +302,9 @@ export default function HermesConfig() {
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Hermes Provider</label>
             <input
-              value={String(config.model?.provider || 'auto')}
-              onChange={event => updateModel('provider', event.target.value)}
-              placeholder="auto"
-              className="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3.5 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-900/40"
+              value="custom"
+              readOnly
+              className="w-full rounded-xl border border-gray-200 bg-gray-100 px-3.5 py-2 text-sm text-gray-500 outline-none cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
