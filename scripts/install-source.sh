@@ -351,7 +351,7 @@ install_openclaw_gateway() {
   export PATH="$HOME/.openclaw/bin:$PATH"
   loginctl enable-linger $(whoami)
   export XDG_RUNTIME_DIR=/run/user/$(id -u)
-  openclaw gateway --allow-unconfigured
+  nohup openclaw gateway --allow-unconfigured > ~/gateway.log 2>&1 &
   openclaw plugins install @openclaw/qqbot
 }
 
