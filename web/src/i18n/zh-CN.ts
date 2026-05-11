@@ -141,7 +141,7 @@ const zhCN: Translations = {
   },
 
   channels: {
-    title: '通道管理',
+    title: '通道管理（建议先到插件中心更新相关通道插件）',
     subtitle: '配置和管理所有消息通道',
     channelList: '通道列表',
     builtinChannels: '内置通道',
