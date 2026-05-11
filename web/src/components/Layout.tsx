@@ -637,7 +637,7 @@ function LayoutShell({ onLogout, napcatStatus, wechatStatus, openclawStatus, pro
               <img src="/logo.jpg" alt="API2CN" className="h-8 w-8 rounded-md object-cover" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm font-black tracking-[-0.02em] text-[var(--ui-heading)]">API2CN</h1>
+              <h1 className="text-sm font-semibold tracking-normal text-[var(--ui-heading)]">API2CN</h1>
               <p className="-mt-0.5 truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--ui-faint)]">{activeAgent.name} · {activeAgent.subtitle}</p>
             </div>
           </div>

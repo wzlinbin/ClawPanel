@@ -2135,9 +2135,16 @@ export default function Channels() {
 
   return (
     <div className={`space-y-4 ${modern ? 'page-modern' : ''}`}>
-      <div>
-        <h2 className={`${modern ? 'page-modern-title text-xl' : 'text-lg font-bold'}`}>{t.channels.title}</h2>
-        <p className={`${modern ? 'page-modern-subtitle text-xs mt-0.5' : 'text-xs text-gray-500 mt-0.5'}`}>{t.channels.subtitle} — <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />{t.channels.statusEnabled}</span> <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />{t.channels.statusConfigured}</span> <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />{t.channels.statusUnconfigured}</span></p>
+      <div className={modern ? 'page-modern-header' : ''}>
+        <div className="min-w-0">
+          <h2 className={`${modern ? 'page-modern-title' : 'text-lg font-bold'}`}>{t.channels.title}</h2>
+          <div className={`${modern ? 'page-modern-subtitle page-modern-channel-legend' : 'text-xs text-gray-500 mt-0.5'}`}>
+            <span>{t.channels.subtitle}</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />{t.channels.statusEnabled}</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />{t.channels.statusConfigured}</span>
+            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />{t.channels.statusUnconfigured}</span>
+          </div>
+        </div>
       </div>
 
       {msg && (
@@ -2148,7 +2155,7 @@ export default function Channels() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Channel selector */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 flex flex-col max-h-[75vh] overflow-hidden">
+        <div className="page-modern-panel bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 flex flex-col max-h-[75vh] overflow-hidden">
           <div className="p-3 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/50">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">{t.channels.channelList}</h3>
           </div>
